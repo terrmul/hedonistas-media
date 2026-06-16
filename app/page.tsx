@@ -384,7 +384,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white flex">
-      <div className={`flex-1 min-w-0 px-6 py-8 transition-all duration-300 ${selected && !selectMode ? 'mr-80' : ''}`}>
+      <div className={`flex-1 min-w-0 px-6 py-8 transition-all duration-300 ${selected && !selectMode ? 'mr-80' : ''}`} onClick={() => { if (selected) setSelected(null) }}>
         <div className="max-w-7xl mx-auto">
 
         <div className="flex items-center justify-between mb-8">
@@ -532,7 +532,7 @@ export default function Home() {
             const isChecked = selectedIds.has(asset.id)
             const displayUrl = getDisplayUrl(asset)
             return (
-              <div key={asset.id} onClick={() => handleCardClick(asset)}
+              <div key={asset.id} onClick={e => { e.stopPropagation(); handleCardClick(asset) }}
                 className={`rounded-xl overflow-hidden border transition-all group relative cursor-pointer ${isChecked ? 'border-amber-600 ring-1 ring-amber-600' : taggingIds.has(asset.id) ? 'border-amber-800 ring-1 ring-amber-900' : selected?.id === asset.id ? 'border-amber-600' : 'border-neutral-800 hover:border-neutral-600'}`}>
                 <div className="aspect-[4/3] bg-neutral-900 flex items-center justify-center relative">
                   {displayUrl
