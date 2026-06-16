@@ -1,42 +1,49 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { execSync, spawnSync } from 'child_process'
-import { writeFileSync, readFileSync, unlinkSync } from 'fs'
+import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-function detectAndConvert(buffer: Buffer, fileName: string): { buffer: Buffer, mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' } {
+function convertToJpeg(buffer: Buffer, fileName: string): Buffer {
   const tmpDir = tmpdir()
-  const inputPath = join(tmpDir, `analyze_in_${Date.now()}`)
+  const ext = fileName.toLowerCase().split('.').pop() || 'jpg'
+  const inputPath = join(tmpDir, `analyze_in_${Date.now()}.${ext}`)
   const outputPath = join(tmpDir, `analyze_out_${Date.now()}.jpg`)
 
   writeFileSync(inputPath, buffer)
 
-  const result = spawnSync('sips', ['-g', 'format', inputPath])
-  const formatOutput = result.stdout?.toString() || ''
-  const isHeic = formatOutput.includes('heic') || formatOutput.includes('heif')
-  const isPng = formatOutput.includes('png')
-  const isGif = formatOutput.includes('gif')
-  const isWebp = formatOutput.includes('webp')
+  try {
+    if (ext === 'pdf') {
+      const { readdirSync } = require('fs')
+      const tmpOut = join(tmpDir, `ql_out_${Date.now()}`)
+      mkdirSync(tmpOut, { recursive: true })
+      execSync(`qlmanage -t -s 1600 -o "${tmpOut}" "${inputPath}" 2>/dev/null`)
+      const qlFiles = readdirSync(tmpOut).filter((f: string) => f.endsWith('.png'))
+      const qlFile = qlFiles.length > 0 ? join(tmpOut, qlFiles[0]) : null
+      if (qlFile && existsSync(qlFile)) {
+        execSync(`sips -s format jpeg "${qlFile}" --out "${outputPath}"`)
+        try { unlinkSync(qlFile) } catch {}
+      }
+    } else {
+      execSync(`sips -s format jpeg -Z 1600 "${inputPath}" --out "${outputPath}"`)
+    }
 
-  try { unlinkSync(inputPath) } catch {}
-
-  if (isHeic) {
-    const inputPath2 = join(tmpDir, `analyze_in2_${Date.now()}.heic`)
-    writeFileSync(inputPath2, buffer)
-    execSync(`sips -s format jpeg "${inputPath2}" --out "${outputPath}"`)
-    const converted = readFileSync(outputPath)
-    try { unlinkSync(inputPath2) } catch {}
-    try { unlinkSync(outputPath) } catch {}
-    return { buffer: converted, mediaType: 'image/jpeg' }
+    if (existsSync(outputPath)) {
+      const result = readFileSync(outputPath)
+      try { unlinkSync(inputPath) } catch {}
+      try { unlinkSync(outputPath) } catch {}
+      return result
+    }
+  } catch (err) {
+    console.error('Conversion error:', err)
   }
 
-  if (isPng) return { buffer, mediaType: 'image/png' }
-  if (isGif) return { buffer, mediaType: 'image/gif' }
-  if (isWebp) return { buffer, mediaType: 'image/webp' }
-  return { buffer, mediaType: 'image/jpeg' }
+  try { unlinkSync(inputPath) } catch {}
+  try { unlinkSync(outputPath) } catch {}
+  return buffer
 }
 
 export async function POST(req: NextRequest) {
@@ -50,13 +57,16 @@ export async function POST(req: NextRequest) {
     if (type === 'image') {
       const bytes = await file.arrayBuffer()
       const rawBuffer = Buffer.from(bytes)
-      const { buffer, mediaType } = detectAndConvert(rawBuffer, file.name)
-      const base64 = buffer.toString('base64')
+      const converted = convertToJpeg(rawBuffer, file.name)
+      const base64 = converted.toString('base64')
+
+      const sizeMB = (converted.length / (1024 * 1024)).toFixed(1)
+      console.log(`Analyzing upload ${file.name} — ${sizeMB}MB`)
 
       messageContent = [
         {
           type: 'image',
-          source: { type: 'base64', media_type: mediaType, data: base64 }
+          source: { type: 'base64', media_type: 'image/jpeg', data: base64 }
         },
         {
           type: 'text',

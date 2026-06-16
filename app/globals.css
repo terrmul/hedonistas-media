@@ -1,3 +1,9 @@
+@font-face {
+  font-family: 'Pacifico';
+  src: url('/Pacifico.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
 @import "tailwindcss";
 
 :root {

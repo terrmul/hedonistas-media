@@ -6,12 +6,14 @@ const dbx = new Dropbox({
   fetch: fetch
 })
 
-const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
-const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v']
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.tiff', '.tif']
+const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.wmv']
+
+const DOCUMENT_EXTENSIONS = ['.pdf']
 
 function isMedia(name: string): boolean {
   const ext = name.toLowerCase().slice(name.lastIndexOf('.'))
-  return IMAGE_EXTENSIONS.includes(ext) || VIDEO_EXTENSIONS.includes(ext)
+  return IMAGE_EXTENSIONS.includes(ext) || VIDEO_EXTENSIONS.includes(ext) || DOCUMENT_EXTENSIONS.includes(ext)
 }
 
 export async function POST(req: NextRequest) {

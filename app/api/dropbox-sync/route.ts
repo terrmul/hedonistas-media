@@ -2,22 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Dropbox } from 'dropbox'
 import { supabase } from '@/lib/supabase'
 import { execSync } from 'child_process'
-import { writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
+import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 
-const dbx = new Dropbox({
-  accessToken: process.env.DROPBOX_ACCESS_TOKEN,
-  fetch: fetch
-})
+const dbx = new Dropbox({ accessToken: process.env.DROPBOX_ACCESS_TOKEN, fetch: fetch })
 
-const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
-const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v']
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.tiff', '.tif']
+const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.wmv']
+const DOCUMENT_EXTENSIONS = ['.pdf']
 
-function getFileType(name: string): 'image' | 'video' | null {
+function getFileType(name: string): 'image' | 'video' | 'document' | null {
   const ext = name.toLowerCase().slice(name.lastIndexOf('.'))
   if (IMAGE_EXTENSIONS.includes(ext)) return 'image'
   if (VIDEO_EXTENSIONS.includes(ext)) return 'video'
+  if (DOCUMENT_EXTENSIONS.includes(ext)) return 'document'
   return null
 }
 
@@ -32,16 +31,21 @@ async function listAllFiles(path: string): Promise<any[]> {
   return files.filter((f: any) => f['.tag'] === 'file')
 }
 
-async function generateImageThumbnail(buffer: Buffer): Promise<Buffer> {
+async function generateImageThumbnail(buffer: Buffer): Promise<Buffer | null> {
   const tmpDir = tmpdir()
   const inputPath = join(tmpDir, `thumb_in_${Date.now()}.jpg`)
   const outputPath = join(tmpDir, `thumb_out_${Date.now()}.jpg`)
-  writeFileSync(inputPath, buffer)
-  execSync(`sips -s format jpeg -Z 400 "${inputPath}" --out "${outputPath}"`)
-  const result = readFileSync(outputPath)
-  try { unlinkSync(inputPath) } catch {}
-  try { unlinkSync(outputPath) } catch {}
-  return result
+  try {
+    writeFileSync(inputPath, buffer)
+    execSync(`sips -s format jpeg -Z 400 "${inputPath}" --out "${outputPath}"`)
+    const result = readFileSync(outputPath)
+    try { unlinkSync(inputPath) } catch {}
+    try { unlinkSync(outputPath) } catch {}
+    return result
+  } catch {
+    try { unlinkSync(inputPath) } catch {}
+    return null
+  }
 }
 
 async function generateVideoThumbnail(buffer: Buffer, fileName: string): Promise<Buffer | null> {
@@ -66,23 +70,50 @@ async function generateVideoThumbnail(buffer: Buffer, fileName: string): Promise
   }
 }
 
+async function generatePdfThumbnail(buffer: Buffer, fileName: string): Promise<Buffer | null> {
+  const tmpDir = tmpdir()
+  const inputPath = join(tmpDir, `pdf_in_${Date.now()}_${fileName}`)
+  const outputPath = join(tmpDir, `pdf_thumb_${Date.now()}.jpg`)
+  try {
+    writeFileSync(inputPath, buffer)
+    const tmpOut = join(tmpDir, `ql_out_${Date.now()}`)
+    mkdirSync(tmpOut, { recursive: true })
+    execSync(`qlmanage -t -s 400 -o "${tmpOut}" "${inputPath}" 2>/dev/null`)
+    const qlFiles = readdirSync(tmpOut).filter((f: string) => f.endsWith('.png'))
+    const qlFile = qlFiles.length > 0 ? join(tmpOut, qlFiles[0]) : null
+    if (qlFile && existsSync(qlFile)) {
+      execSync(`sips -s format jpeg "${qlFile}" --out "${outputPath}"`)
+      const result = readFileSync(outputPath)
+      try { unlinkSync(qlFile) } catch {}
+      try { unlinkSync(inputPath) } catch {}
+      try { unlinkSync(outputPath) } catch {}
+      return result
+    }
+    try { unlinkSync(inputPath) } catch {}
+    return null
+  } catch (err) {
+    console.error('PDF thumbnail failed:', err)
+    try { unlinkSync(inputPath) } catch {}
+    return null
+  }
+}
+
 async function processFile(file: any, existingPaths: Set<string>) {
   if (existingPaths.has(file.path_lower)) return { status: 'skipped' }
   const fileType = getFileType(file.name)
   if (!fileType) return { status: 'skipped' }
 
-  let thumbnailUrl = ''
   const download = await dbx.filesDownload({ path: file.path_lower }) as any
   const arrayBuffer = await download.result.fileBlob.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
 
+  let thumbnailUrl = ''
   try {
     let thumbnail: Buffer | null = null
-    if (fileType === 'image') {
-      thumbnail = await generateImageThumbnail(buffer)
-    } else if (fileType === 'video') {
-      thumbnail = await generateVideoThumbnail(buffer, file.name)
-    }
+    if (fileType === 'image') thumbnail = await generateImageThumbnail(buffer)
+    else if (fileType === 'video') thumbnail = await generateVideoThumbnail(buffer, file.name)
+    else if (fileType === 'document') thumbnail = await generatePdfThumbnail(buffer, file.name)
+
     if (thumbnail) {
       const thumbName = `${Date.now()}_${file.name.replace(/\.[^.]+$/, '')}.jpg`
       const { data: uploadData } = await supabase.storage

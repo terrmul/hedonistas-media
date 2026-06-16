@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 type Asset = {
   id: string
@@ -40,11 +41,27 @@ export default function Home() {
   const [browserHistory, setBrowserHistory] = useState<string[]>([])
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
   const [videoPlayer, setVideoPlayer] = useState<Asset | null>(null)
+  const [user, setUser] = useState<any>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const router = useRouter()
   const [tagging, setTagging] = useState(false)
   const [tagProgress, setTagProgress] = useState({ done: 0, total: 0 })
   const [taggingIds, setTaggingIds] = useState<Set<string>>(new Set())
   const [currentlyTagging, setCurrentlyTagging] = useState<string | null>(null)
   const taggingRef = useRef(false)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) router.push('/login')
+      else setUser(session.user)
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) router.push('/login')
+      else setUser(session.user)
+    })
+    return () => subscription.unsubscribe()
+  }, [router])
 
   const fetchAssets = useCallback(async () => {
     const { data } = await supabase.from('assets').select('*').order('created_at', { ascending: false })
@@ -342,6 +359,19 @@ export default function Home() {
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
   }
 
+  async function signOut() {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-neutral-950 flex items-center justify-center">
+        <div className="text-neutral-600 text-sm">Loading...</div>
+      </main>
+    )
+  }
+
   const taggedCount = assets.filter(a => a.analyzed).length
   const untaggedCount = assets.filter(a => !a.analyzed).length
   const allSelected = filtered.length > 0 && selectedIds.size === filtered.length
@@ -359,15 +389,18 @@ export default function Home() {
 
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:'#c8a96e'}}>
-              <span className="text-black font-semibold text-sm">HM</span>
-            </div>
+            <img src="/icon.png" alt="Hedonistas Mezcal" className="w-12 h-12 rounded-xl object-contain" />
             <div>
-              <h1 className="text-lg font-medium">Hedonistas Mezcal</h1>
+              <h1 className="text-2xl" style={{fontFamily: 'Pacifico, cursive', color: '#F3E6D1'}}>Hedonistas Mezcal</h1>
               <p className="text-xs text-neutral-500">Media library</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            <span className="text-xs text-neutral-600 hidden sm:block">{user?.email}</span>
+            <button onClick={signOut}
+              className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-red-900 hover:text-red-500 transition-colors">
+              Sign out
+            </button>
             <div className="text-xs text-neutral-500">{assets.length} assets / {taggedCount} tagged</div>
             {untaggedCount > 0 && !tagging && (
               <button onClick={tagAllUntagged}
@@ -442,10 +475,10 @@ export default function Home() {
           onClick={() => document.getElementById('fileInput')?.click()}
           onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
           onDrop={e => { e.preventDefault(); e.stopPropagation(); handleUpload(e.dataTransfer.files) }}>
-          <input id="fileInput" type="file" multiple accept="image/*,video/*,.heic,.heif" className="hidden"
+          <input id="fileInput" type="file" multiple accept="image/*,video/*,.heic,.heif,.tiff,.tif,.webm,.wmv,.pdf" className="hidden"
             onChange={e => handleUpload(e.target.files)} />
           <p className="text-neutral-400 text-sm">{uploading ? 'Uploading and analyzing...' : 'Drop images or videos here, or click to browse'}</p>
-          <p className="text-neutral-600 text-xs mt-1">Supports JPG, PNG, HEIC, MP4, MOV</p>
+          <p className="text-neutral-600 text-xs mt-1">Supports JPG, PNG, HEIC, TIFF, MP4, MOV, WebM, WMV, PDF</p>
         </div>
 
         <div className="flex gap-3 mb-4">
