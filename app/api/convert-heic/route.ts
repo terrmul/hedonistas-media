@@ -8,13 +8,12 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // sharp handles HEIC/HEIF natively on Linux via libvips (built into the sharp npm package)
     const converted = await sharp(buffer)
-      .rotate()           // honour EXIF orientation
+      .rotate()
       .jpeg({ quality: 90 })
       .toBuffer()
 
-    return new NextResponse(converted, {
+    return new NextResponse(converted as unknown as BodyInit, {
       headers: { 'Content-Type': 'image/jpeg' }
     })
   } catch (err) {
