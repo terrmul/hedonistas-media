@@ -478,7 +478,7 @@ export default function Home() {
           <input id="fileInput" type="file" multiple accept="image/*,video/*,.heic,.heif,.tiff,.tif,.webm,.wmv,.pdf" className="hidden"
             onChange={e => handleUpload(e.target.files)} />
           <p className="text-neutral-400 text-sm">{uploading ? 'Uploading and analyzing...' : 'Drop images or videos here, or click to browse'}</p>
-          <p className="text-neutral-600 text-xs mt-1">Supports JPG, PNG, HEIC, TIFF, MP4, MOV, WebM, WMV, PDF</p>
+          <p className="text-neutral-600 text-xs mt-1">Supports JPG, PNG, HEIC, TIFF, MP4, MOV, WebM, WMV</p>
         </div>
 
         <div className="flex gap-3 mb-4">
