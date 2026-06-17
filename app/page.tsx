@@ -66,7 +66,7 @@ export default function Home() {
   }, [router])
 
   const fetchAssets = useCallback(async () => {
-    const { data } = await supabase.from('assets').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('assets').select('*').order('created_at', { ascending: false }).limit(10000)
     if (data) { setAssets(data); setFiltered(data) }
   }, [])
 
