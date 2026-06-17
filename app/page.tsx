@@ -109,9 +109,7 @@ export default function Home() {
   function openFolderBrowser() {
     setShowFolderBrowser(true)
     setSelectedFiles(new Set())
-    if (browserPath === '') {
-      browseTo('')
-    }
+    browseTo(browserPath || ROOT_PATH)
   }
 
   function navigateInto(folder: Folder) {
