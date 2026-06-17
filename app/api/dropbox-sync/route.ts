@@ -108,7 +108,16 @@ async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>, 
     const linkResult = await dbx.sharingCreateSharedLinkWithSettings({ path: file.path_lower })
     dropboxUrl = linkResult.result.url.replace('?dl=0', '?raw=1')
   } catch {
-    dropboxUrl = `https://www.dropbox.com/home${file.path_lower}`
+    try {
+      const links = await dbx.sharingListSharedLinks({ path: file.path_lower, direct_only: true })
+      if (links.result.links.length > 0) {
+        dropboxUrl = links.result.links[0].url.replace('?dl=0', '?raw=1')
+      } else {
+        dropboxUrl = `https://www.dropbox.com/home${file.path_lower}`
+      }
+    } catch {
+      dropboxUrl = `https://www.dropbox.com/home${file.path_lower}`
+    }
   }
 
   const { data: inserted } = await supabase.from('assets').insert({
