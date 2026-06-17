@@ -4,7 +4,7 @@ import { getDropboxToken } from '@/lib/dropbox'
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.tiff', '.tif']
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.wmv']
-const DOCUMENT_EXTENSIONS = ['.pdf']
+const DOCUMENT_EXTENSIONS: string[] = []
 
 function isMedia(name: string): boolean {
   const ext = name.toLowerCase().slice(name.lastIndexOf('.'))
