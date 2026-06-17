@@ -159,6 +159,7 @@ export default function Home() {
         const decoder = new TextDecoder()
         if (!reader) throw new Error('No response body')
         let batchComplete: any = null
+        let batchProcessed = 0
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
@@ -168,19 +169,21 @@ export default function Home() {
             try {
               const data = JSON.parse(line.slice(6))
               if (data.type === 'start') {
-                grandTotal = data.grandTotal || 0
+                if (grandTotal === 0) grandTotal = data.grandTotal || 0
               } else if (data.type === 'progress') {
-                totalProcessed += data.processed - (batchComplete?.processed || 0)
-                setSyncProgress({ processed: totalProcessed, total: grandTotal, current: data.current })
+                batchProcessed = data.processed
+                setSyncProgress({ processed: totalProcessed + batchProcessed, total: grandTotal, current: data.current })
               } else if (data.type === 'complete') {
                 batchComplete = data
-                totalProcessed = data.processed + (totalProcessed - data.processed)
-                totalFailed += data.failed || 0
-                totalSkipped += data.skipped || 0
+                batchProcessed = data.processed
               }
             } catch {}
           }
         }
+        totalProcessed += batchProcessed
+        totalFailed += batchComplete?.failed || 0
+        totalSkipped += batchComplete?.skipped || 0
+        grandTotal = Math.max(grandTotal, totalProcessed + (batchComplete?.grandTotal || 0) - batchProcessed)
         await fetchAssets()
         if (!batchComplete || batchComplete.processed === 0) break
         if (!batchComplete.hasMore) break
@@ -835,6 +838,11 @@ export default function Home() {
                   className="px-4 py-2 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-600 transition-colors">
                   Cancel
                 </button>
+                <label className="flex items-center gap-1.5 text-xs text-neutral-400 cursor-pointer whitespace-nowrap">
+                  <input type="checkbox" checked={tagOnSync} onChange={e => setTagOnSync(e.target.checked)}
+                    className="w-3 h-3 rounded accent-amber-500" />
+                  Tag on sync
+                </label>
                 <button onClick={syncSelected} disabled={!browserPath}
                   className="flex-1 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   style={{
