@@ -112,6 +112,9 @@ async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>, 
       const links = await dbx.sharingListSharedLinks({ path: file.path_lower, direct_only: true })
       if (links.result.links.length > 0) {
         dropboxUrl = links.result.links[0].url.replace('?dl=0', '?raw=1')
+      } else if (file.id) {
+        const cleanId = file.id.replace('id:', '')
+        dropboxUrl = `https://www.dropbox.com/home?quickview=id%3A${cleanId}`
       } else {
         dropboxUrl = `https://www.dropbox.com/home${file.path_lower}`
       }
