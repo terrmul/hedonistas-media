@@ -15,6 +15,11 @@ function getFileType(name: string): 'image' | 'video' | 'document' | null {
   return null
 }
 
+function isHeic(fileName: string): boolean {
+  const ext = fileName.toLowerCase().split('.').pop() || ''
+  return ext === 'heic' || ext === 'heif'
+}
+
 async function listAllFiles(dbx: Dropbox, path: string): Promise<any[]> {
   const files: any[] = []
   let response = await dbx.filesListFolder({ path, recursive: true })
@@ -26,15 +31,22 @@ async function listAllFiles(dbx: Dropbox, path: string): Promise<any[]> {
   return files.filter((f: any) => f['.tag'] === 'file')
 }
 
-async function generateThumbnail(buffer: Buffer): Promise<Buffer | null> {
+async function generateThumbnail(buffer: Buffer, fileName: string): Promise<Buffer | null> {
   try {
+    let jpegBuffer = buffer
+    if (isHeic(fileName)) {
+      const heicConvert = (await import('heic-convert')).default
+      const converted = await heicConvert({ buffer, format: 'JPEG', quality: 0.85 })
+      jpegBuffer = Buffer.from(converted)
+    }
     const sharp = (await import('sharp')).default
-    return await sharp(buffer)
+    return await sharp(jpegBuffer, { failOn: 'none' })
       .rotate()
       .resize(400, 300, { fit: 'cover', position: 'centre' })
       .jpeg({ quality: 80 })
       .toBuffer()
-  } catch {
+  } catch (err) {
+    console.error('Thumbnail generation failed:', err)
     return null
   }
 }
@@ -51,7 +63,7 @@ async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>) 
   let thumbnailUrl = ''
   if (fileType === 'image') {
     try {
-      const thumbnail = await generateThumbnail(buffer)
+      const thumbnail = await generateThumbnail(buffer, file.name)
       if (thumbnail) {
         const thumbName = `${Date.now()}_${file.name.replace(/\.[^.]+$/, '')}.jpg`
         const { data: uploadData } = await supabase.storage
