@@ -470,12 +470,7 @@ export default function Home() {
               className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors whitespace-nowrap">
               Choose folder
             </button>
-            {syncPath && (
-              <button onClick={() => runSync(syncPath, tagOnSync)} disabled={syncing}
-                  className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-amber-600 hover:text-amber-600 transition-colors whitespace-nowrap">
-                  {syncing ? 'Syncing...' : 'Sync Dropbox'}
-                </button>
-            )}
+    
           </div>
         </div>
 
