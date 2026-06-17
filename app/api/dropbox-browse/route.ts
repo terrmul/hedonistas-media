@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Dropbox } from 'dropbox'
-
-const dbx = new Dropbox({
-  accessToken: process.env.DROPBOX_ACCESS_TOKEN,
-  fetch: fetch
-})
+import { getDropboxToken } from '@/lib/dropbox'
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.tiff', '.tif']
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.wmv']
-
 const DOCUMENT_EXTENSIONS = ['.pdf']
 
 function isMedia(name: string): boolean {
@@ -19,6 +14,8 @@ function isMedia(name: string): boolean {
 export async function POST(req: NextRequest) {
   try {
     const { path = '' } = await req.json()
+    const token = await getDropboxToken()
+    const dbx = new Dropbox({ accessToken: token, fetch: fetch })
     const response = await dbx.filesListFolder({ path, recursive: false })
     const folders = response.result.entries
       .filter((e: any) => e['.tag'] === 'folder')

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Dropbox } from 'dropbox'
-
-const dbx = new Dropbox({
-  accessToken: process.env.DROPBOX_ACCESS_TOKEN,
-  fetch: fetch
-})
+import { getDropboxToken } from '@/lib/dropbox'
 
 export async function GET(req: NextRequest) {
   try {
     const path = req.nextUrl.searchParams.get('path')
     if (!path) return NextResponse.json({ error: 'No path' }, { status: 400 })
+
+    const token = await getDropboxToken()
+    const dbx = new Dropbox({ accessToken: token, fetch: fetch })
 
     const download = await dbx.filesDownload({ path }) as any
     const arrayBuffer = await download.result.fileBlob.arrayBuffer()

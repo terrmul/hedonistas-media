@@ -1,14 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import sharp from 'sharp'
-import { execSync } from 'child_process'
-import { writeFileSync, readFileSync, unlinkSync } from 'fs'
-import { join } from 'path'
-import { tmpdir } from 'os'
-
-function isHeic(buffer: Buffer): boolean {
-  const hex = buffer.slice(4, 12).toString('hex')
-  return hex.includes('6674797068656963') || hex.includes('6674797068656966')
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,15 +8,11 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    const tmpDir = tmpdir()
-    const inputPath = join(tmpDir, `input_${Date.now()}.heic`)
-    const outputPath = join(tmpDir, `output_${Date.now()}.jpg`)
-
-    writeFileSync(inputPath, buffer)
-    execSync(`sips -s format jpeg "${inputPath}" --out "${outputPath}"`)
-    const converted = readFileSync(outputPath)
-    try { unlinkSync(inputPath) } catch {}
-    try { unlinkSync(outputPath) } catch {}
+    // sharp handles HEIC/HEIF natively on Linux via libvips (built into the sharp npm package)
+    const converted = await sharp(buffer)
+      .rotate()           // honour EXIF orientation
+      .jpeg({ quality: 90 })
+      .toBuffer()
 
     return new NextResponse(converted, {
       headers: { 'Content-Type': 'image/jpeg' }

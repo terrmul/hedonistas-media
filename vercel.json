@@ -1,0 +1,9 @@
+{
+  "buildCommand": "apt-get install -y poppler-utils && next build",
+  "functions": {
+    "app/api/dropbox-sync/route.ts": { "maxDuration": 300 },
+    "app/api/dropbox-webhook/route.ts": { "maxDuration": 10 },
+    "app/api/analyze/route.ts": { "maxDuration": 60 },
+    "app/api/thumbnail/route.ts": { "maxDuration": 60 }
+  }
+}
