@@ -139,7 +139,7 @@ export default function Home() {
     }
   }
 
-  async function runSync(path: string, tag: boolean) {
+  async function runSync(path: string, tag: boolean, resume = true) {
     setSyncing(true)
     setSyncResult(null)
     setSyncProgress({ processed: 0, total: 0, current: '' })
@@ -147,31 +147,36 @@ export default function Home() {
     let totalFailed = 0
     let totalSkipped = 0
     let grandTotal = 0
+    let isFirstBatch = true
     try {
       while (true) {
         const res = await fetch('/api/dropbox-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path, limit: 25, tagOnSync: tag, autoBatch: false })
+          body: JSON.stringify({ path, limit: 100, tagOnSync: tag, resetCursor: isFirstBatch && !resume })
         })
+        isFirstBatch = false
         const reader = res.body?.getReader()
         const decoder = new TextDecoder()
         if (!reader) throw new Error('No response body')
         let batchComplete: any = null
         let batchProcessed = 0
+        let buffer = ''
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
-          const chunk = decoder.decode(value)
-          const lines = chunk.split('\n').filter(l => l.startsWith('data: '))
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
           for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
             try {
               const data = JSON.parse(line.slice(6))
               if (data.type === 'start') {
                 if (grandTotal === 0) grandTotal = data.grandTotal || 0
               } else if (data.type === 'progress') {
                 batchProcessed = data.processed
-                setSyncProgress({ processed: totalProcessed + batchProcessed, total: grandTotal, current: data.current })
+                setSyncProgress({ processed: totalProcessed + batchProcessed, total: Math.max(grandTotal, totalProcessed + data.total), current: data.current })
               } else if (data.type === 'complete') {
                 batchComplete = data
                 batchProcessed = data.processed
@@ -182,14 +187,15 @@ export default function Home() {
         totalProcessed += batchProcessed
         totalFailed += batchComplete?.failed || 0
         totalSkipped += batchComplete?.skipped || 0
-        grandTotal = Math.max(grandTotal, totalProcessed + (batchComplete?.grandTotal || 0) - batchProcessed)
+        if (batchComplete?.grandTotal) grandTotal = Math.max(grandTotal, totalProcessed + (batchComplete.hasMore ? batchComplete.grandTotal : 0))
         await fetchAssets()
         if (!batchComplete || batchComplete.processed === 0) break
         if (!batchComplete.hasMore) break
+        await new Promise(r => setTimeout(r, 500))
       }
       setSyncResult({ processed: totalProcessed, failed: totalFailed, skipped: totalSkipped, remaining: 0 })
     } catch (err) {
-      setSyncResult({ error: 'Sync failed' })
+      setSyncResult({ error: 'Sync failed — you can resume by syncing the same folder again' })
     }
     setSyncing(false)
     setSyncProgress({ processed: 0, total: 0, current: '' })
@@ -201,7 +207,7 @@ export default function Home() {
     setShowFolderBrowser(false)
     if (syncAll) setSyncPath(browserPath)
     if (syncAll) {
-      await runSync(browserPath, tagOnSync)
+      await runSync(browserPath, tagOnSync, false)
     } else {
       setSyncing(true)
       setSyncResult(null)
@@ -512,8 +518,16 @@ export default function Home() {
         {syncResult && (
           <div className={`mb-4 p-3 rounded-xl text-xs border ${syncResult.error ? 'bg-red-950/50 text-red-400 border-red-900' : 'bg-neutral-900 text-neutral-400 border-neutral-800'}`}>
             {syncResult.error
-              ? `Error: ${syncResult.error}`
-              : `Sync complete — ${syncResult.processed} new assets added, ${syncResult.skipped} already imported, ${syncResult.failed} failed${syncResult.remaining > 0 ? `. ${syncResult.remaining} remaining — click Sync Dropbox again to continue` : ''}`}
+              ? <div className="flex items-center gap-3">
+                  <span>{syncResult.error}</span>
+                  {syncPath && (
+                    <button onClick={() => runSync(syncPath, tagOnSync, true)}
+                      className="px-3 py-1 rounded-lg border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors whitespace-nowrap">
+                      Resume sync
+                    </button>
+                  )}
+                </div>
+              : `Sync complete — ${syncResult.processed} new assets added, ${syncResult.skipped} already imported, ${syncResult.failed} failed`}
           </div>
         )}
 
