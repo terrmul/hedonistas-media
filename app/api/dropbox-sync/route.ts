@@ -53,21 +53,11 @@ async function generateImageThumbnail(buffer: Buffer, fileName: string): Promise
 
 async function generatePdfThumbnail(buffer: Buffer): Promise<Buffer | null> {
   try {
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs' as any)
-    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) })
-    const pdf = await loadingTask.promise
-    const page = await pdf.getPage(1)
-    const viewport = page.getViewport({ scale: 1.5 })
-
-    const { createCanvas } = await import('canvas')
-    const canvas = createCanvas(viewport.width, viewport.height)
-    const context = canvas.getContext('2d')
-
-    await page.render({ canvasContext: context as any, viewport }).promise
-
+    const { pdf } = await import('pdf-to-img')
+    const doc = await pdf(buffer, { scale: 1.5 })
+    const firstPage = await doc.getPage(1)
     const sharp = (await import('sharp')).default
-    const pngBuffer = canvas.toBuffer('image/png')
-    return await sharp(pngBuffer)
+    return await sharp(firstPage)
       .resize(400, 300, { fit: 'cover' })
       .jpeg({ quality: 80 })
       .toBuffer()
