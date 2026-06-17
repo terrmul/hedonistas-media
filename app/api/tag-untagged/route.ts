@@ -22,19 +22,15 @@ function filenameTags(name: string): string[] {
   return name.replace(/\.[^.]+$/, '').split(/[-_\s]+/).filter(Boolean).map(t => t.toLowerCase())
 }
 
-async function toJpegBuffer(rawBuffer: Buffer, fileName: string): Promise<Buffer | null> {
+async function toJpegBuffer(buffer: Buffer, fileName: string): Promise<Buffer | null> {
   try {
     if (isHeic(fileName)) {
       const heicConvert = (await import('heic-convert')).default
-      const converted = await heicConvert({
-        buffer: rawBuffer,
-        format: 'JPEG',
-        quality: 0.85
-      })
+      const converted = await heicConvert({ buffer, format: 'JPEG', quality: 0.85 })
       return Buffer.from(converted)
     }
     const sharp = (await import('sharp')).default
-    return await sharp(rawBuffer, { failOn: 'none' })
+    return await sharp(buffer, { failOn: 'none' })
       .rotate()
       .resize(1600, 1600, { fit: 'inside' })
       .jpeg({ quality: 85 })
@@ -62,26 +58,31 @@ export async function POST(req: NextRequest) {
 
     const assetType = getAssetType(asset.name)
 
-    if (asset.dropbox_path && assetType === 'image') {
+    if (asset.dropbox_path && (assetType === 'image' || assetType === 'document')) {
       const token = await getDropboxToken()
       const dbx = new Dropbox({ accessToken: token, fetch: fetch })
       const download = await dbx.filesDownload({ path: asset.dropbox_path }) as any
       const arrayBuffer = await download.result.fileBlob.arrayBuffer()
       const rawBuffer = Buffer.from(arrayBuffer)
 
-      const imageBuffer = await toJpegBuffer(rawBuffer, asset.name)
-
-      if (imageBuffer) {
+      if (assetType === 'document') {
+        // Send PDF directly to Claude as a document
         try {
-          const base64 = imageBuffer.toString('base64')
+          const base64 = rawBuffer.toString('base64')
           const response = await client.messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 1000,
             messages: [{
               role: 'user',
               content: [
-                { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-                { type: 'text', text: 'Analyze this image for a mezcal brand media library. Return ONLY a valid JSON object with: "tags" (array of 8-12 short descriptive strings covering subjects, setting, mood, colors, objects, people, activities) and "description" (1-2 sentences). No markdown, no preamble.' }
+                {
+                  type: 'document',
+                  source: { type: 'base64', media_type: 'application/pdf', data: base64 }
+                } as any,
+                {
+                  type: 'text',
+                  text: 'This is a PDF document for a mezcal brand media library. Analyze the content and return ONLY a valid JSON object with: "tags" (array of 8-12 descriptive strings covering the document type, topics, brand elements, key information) and "description" (1-2 sentences summarizing what this document is about). No markdown, no preamble.'
+                }
               ]
             }]
           })
@@ -89,14 +90,42 @@ export async function POST(req: NextRequest) {
           const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
           tags = parsed.tags || []
           description = parsed.description || ''
-        } catch (claudeErr) {
-          console.error('Claude failed:', claudeErr)
+        } catch (err) {
+          console.error('PDF tagging failed:', err)
+          tags = filenameTags(asset.name)
+          description = `Document: ${asset.name}`
+        }
+      } else {
+        // Image
+        const imageBuffer = await toJpegBuffer(rawBuffer, asset.name)
+
+        if (imageBuffer) {
+          try {
+            const base64 = imageBuffer.toString('base64')
+            const response = await client.messages.create({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 1000,
+              messages: [{
+                role: 'user',
+                content: [
+                  { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+                  { type: 'text', text: 'Analyze this image for a mezcal brand media library. Return ONLY a valid JSON object with: "tags" (array of 8-12 short descriptive strings covering subjects, setting, mood, colors, objects, people, activities) and "description" (1-2 sentences). No markdown, no preamble.' }
+                ]
+              }]
+            })
+            const text = response.content[0].type === 'text' ? response.content[0].text : ''
+            const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
+            tags = parsed.tags || []
+            description = parsed.description || ''
+          } catch (claudeErr) {
+            console.error('Claude failed:', claudeErr)
+            tags = filenameTags(asset.name)
+            description = `Image: ${asset.name}`
+          }
+        } else {
           tags = filenameTags(asset.name)
           description = `Image: ${asset.name}`
         }
-      } else {
-        tags = filenameTags(asset.name)
-        description = `Image: ${asset.name}`
       }
     } else {
       tags = filenameTags(asset.name)
