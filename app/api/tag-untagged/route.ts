@@ -41,6 +41,44 @@ async function toJpegBuffer(buffer: Buffer, fileName: string): Promise<Buffer | 
   }
 }
 
+async function getVideoThumbnailBuffer(dbx: Dropbox, filePath: string): Promise<Buffer | null> {
+  try {
+    const response = await (dbx as any).filesGetThumbnailV2({
+      resource: { '.tag': 'path', path: filePath },
+      format: { '.tag': 'jpeg' },
+      size: { '.tag': 'w640h480' }
+    }) as any
+    const arrayBuffer = await response.result.fileBlob.arrayBuffer()
+    return Buffer.from(arrayBuffer)
+  } catch (err) {
+    console.error('Dropbox video thumbnail failed:', err)
+    return null
+  }
+}
+
+async function tagWithClaude(imageBuffer: Buffer, promptText: string): Promise<{ tags: string[], description: string } | null> {
+  try {
+    const base64 = imageBuffer.toString('base64')
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+          { type: 'text', text: promptText }
+        ]
+      }]
+    })
+    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
+    return { tags: parsed.tags || [], description: parsed.description || '' }
+  } catch (err) {
+    console.error('Claude tagging failed:', err)
+    return null
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { assetId } = await req.json()
@@ -58,74 +96,37 @@ export async function POST(req: NextRequest) {
 
     const assetType = getAssetType(asset.name)
 
-    if (asset.dropbox_path && (assetType === 'image' || assetType === 'document')) {
+    if (asset.dropbox_path) {
       const token = await getDropboxToken()
       const dbx = new Dropbox({ accessToken: token, fetch: fetch })
-      const download = await dbx.filesDownload({ path: asset.dropbox_path }) as any
-      const arrayBuffer = await download.result.fileBlob.arrayBuffer()
-      const rawBuffer = Buffer.from(arrayBuffer)
 
-      if (assetType === 'document') {
-        // Send PDF directly to Claude as a document
-        try {
-          const base64 = rawBuffer.toString('base64')
-          const response = await client.messages.create({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 1000,
-            messages: [{
-              role: 'user',
-              content: [
-                {
-                  type: 'document',
-                  source: { type: 'base64', media_type: 'application/pdf', data: base64 }
-                } as any,
-                {
-                  type: 'text',
-                  text: 'This is a PDF document for a mezcal brand media library. Analyze the content and return ONLY a valid JSON object with: "tags" (array of 8-12 descriptive strings covering the document type, topics, brand elements, key information) and "description" (1-2 sentences summarizing what this document is about). No markdown, no preamble.'
-                }
-              ]
-            }]
-          })
-          const text = response.content[0].type === 'text' ? response.content[0].text : ''
-          const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
-          tags = parsed.tags || []
-          description = parsed.description || ''
-        } catch (err) {
-          console.error('PDF tagging failed:', err)
-          tags = filenameTags(asset.name)
-          description = `Document: ${asset.name}`
-        }
-      } else {
-        // Image
+      if (assetType === 'image') {
+        const download = await dbx.filesDownload({ path: asset.dropbox_path }) as any
+        const arrayBuffer = await download.result.fileBlob.arrayBuffer()
+        const rawBuffer = Buffer.from(arrayBuffer)
         const imageBuffer = await toJpegBuffer(rawBuffer, asset.name)
 
         if (imageBuffer) {
-          try {
-            const base64 = imageBuffer.toString('base64')
-            const response = await client.messages.create({
-              model: 'claude-sonnet-4-6',
-              max_tokens: 1000,
-              messages: [{
-                role: 'user',
-                content: [
-                  { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-                  { type: 'text', text: 'Analyze this image for a mezcal brand media library. Return ONLY a valid JSON object with: "tags" (array of 8-12 short descriptive strings covering subjects, setting, mood, colors, objects, people, activities) and "description" (1-2 sentences). No markdown, no preamble.' }
-                ]
-              }]
-            })
-            const text = response.content[0].type === 'text' ? response.content[0].text : ''
-            const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
-            tags = parsed.tags || []
-            description = parsed.description || ''
-          } catch (claudeErr) {
-            console.error('Claude failed:', claudeErr)
-            tags = filenameTags(asset.name)
-            description = `Image: ${asset.name}`
-          }
+          const result = await tagWithClaude(imageBuffer, 'Analyze this image for a mezcal brand media library. Return ONLY a valid JSON object with: "tags" (array of 8-12 short descriptive strings covering subjects, setting, mood, colors, objects, people, activities) and "description" (1-2 sentences). No markdown, no preamble.')
+          if (result) { tags = result.tags; description = result.description }
+          else { tags = filenameTags(asset.name); description = `Image: ${asset.name}` }
         } else {
           tags = filenameTags(asset.name)
           description = `Image: ${asset.name}`
         }
+      } else if (assetType === 'video') {
+        const thumbBuffer = await getVideoThumbnailBuffer(dbx, asset.dropbox_path)
+        if (thumbBuffer) {
+          const result = await tagWithClaude(thumbBuffer, 'This is a frame from a video for a mezcal brand media library. Analyze what you see and return ONLY a valid JSON object with: "tags" (array of 8-12 descriptive strings covering subjects, setting, mood, colors, objects, people, activities, camera angle) and "description" (1-2 sentences describing what is happening in the video). No markdown, no preamble.')
+          if (result) { tags = result.tags; description = result.description }
+          else { tags = filenameTags(asset.name); description = `Video: ${asset.name}` }
+        } else {
+          tags = filenameTags(asset.name)
+          description = `Video: ${asset.name}`
+        }
+      } else {
+        tags = filenameTags(asset.name)
+        description = `${assetType}: ${asset.name}`
       }
     } else {
       tags = filenameTags(asset.name)
