@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Dropbox } from 'dropbox'
 import { getDropboxToken } from '@/lib/dropbox'
 import { supabase } from '@/lib/supabase'
+import { writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.tiff', '.tif']
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.wmv']
-const DOCUMENT_EXTENSIONS: string[] = []
 
-function getFileType(name: string): 'image' | 'video' | 'document' | null {
+function getFileType(name: string): 'image' | 'video' | null {
   const ext = name.toLowerCase().slice(name.lastIndexOf('.'))
   if (IMAGE_EXTENSIONS.includes(ext)) return 'image'
   if (VIDEO_EXTENSIONS.includes(ext)) return 'video'
-  if (DOCUMENT_EXTENSIONS.includes(ext)) return 'document'
   return null
 }
 
@@ -51,23 +52,59 @@ async function generateImageThumbnail(buffer: Buffer, fileName: string): Promise
   }
 }
 
-async function generatePdfThumbnail(buffer: Buffer): Promise<Buffer | null> {
+async function generateVideoThumbnail(buffer: Buffer, fileName: string): Promise<Buffer | null> {
+  const tmpDir = tmpdir()
+  const inputPath = join(tmpDir, `vid_${Date.now()}_${fileName}`)
+  const outputPath = join(tmpDir, `vid_thumb_${Date.now()}.jpg`)
   try {
-    const { pdf } = await import('pdf-to-img')
-    const doc = await pdf(buffer, { scale: 1.5 })
-    const firstPage = await doc.getPage(1)
-    const sharp = (await import('sharp')).default
-    return await sharp(firstPage)
-      .resize(400, 300, { fit: 'cover' })
-      .jpeg({ quality: 80 })
-      .toBuffer()
+    writeFileSync(inputPath, buffer)
+    const ffmpegInstaller = await import('@ffmpeg-installer/ffmpeg')
+    const ffmpeg = (await import('fluent-ffmpeg')).default
+    ffmpeg.setFfmpegPath(ffmpegInstaller.path)
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .screenshots({ timestamps: ['00:00:03'], filename: outputPath, size: '400x300' })
+        .on('end', resolve)
+        .on('error', reject)
+    })
+
+    if (existsSync(outputPath)) {
+      const frame = readFileSync(outputPath)
+      try { unlinkSync(inputPath) } catch {}
+      try { unlinkSync(outputPath) } catch {}
+      return frame
+    }
+    return null
   } catch (err) {
-    console.error('PDF thumbnail failed:', err)
+    console.error('Video thumbnail failed:', err)
+    try { unlinkSync(inputPath) } catch {}
+    try { unlinkSync(outputPath) } catch {}
     return null
   }
 }
 
-async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>) {
+async function uploadThumbnail(thumbnail: Buffer, fileName: string): Promise<string> {
+  const thumbName = `${Date.now()}_${fileName.replace(/\.[^.]+$/, '')}.jpg`
+  const { data: uploadData } = await supabase.storage
+    .from('thumbnails')
+    .upload(thumbName, thumbnail, { contentType: 'image/jpeg' })
+  if (uploadData) {
+    const { data: urlData } = supabase.storage.from('thumbnails').getPublicUrl(thumbName)
+    return urlData.publicUrl
+  }
+  return ''
+}
+
+async function tagAsset(assetId: string, origin: string): Promise<void> {
+  await fetch(`${origin}/api/tag-untagged`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assetId })
+  })
+}
+
+async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>, tagOnSync: boolean, origin: string) {
   if (existingPaths.has(file.path_lower)) return { status: 'skipped' }
   const fileType = getFileType(file.name)
   if (!fileType) return { status: 'skipped' }
@@ -80,18 +117,8 @@ async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>) 
   try {
     let thumbnail: Buffer | null = null
     if (fileType === 'image') thumbnail = await generateImageThumbnail(buffer, file.name)
-    else if (fileType === 'document') thumbnail = await generatePdfThumbnail(buffer)
-
-    if (thumbnail) {
-      const thumbName = `${Date.now()}_${file.name.replace(/\.[^.]+$/, '')}.jpg`
-      const { data: uploadData } = await supabase.storage
-        .from('thumbnails')
-        .upload(thumbName, thumbnail, { contentType: 'image/jpeg' })
-      if (uploadData) {
-        const { data: urlData } = supabase.storage.from('thumbnails').getPublicUrl(thumbName)
-        thumbnailUrl = urlData.publicUrl
-      }
-    }
+    else if (fileType === 'video') thumbnail = await generateVideoThumbnail(buffer, file.name)
+    if (thumbnail) thumbnailUrl = await uploadThumbnail(thumbnail, file.name)
   } catch (thumbErr) {
     console.error('Thumbnail failed for', file.name, thumbErr)
   }
@@ -104,7 +131,7 @@ async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>) 
     dropboxUrl = `https://www.dropbox.com/home${file.path_lower}`
   }
 
-  await supabase.from('assets').insert({
+  const { data: inserted } = await supabase.from('assets').insert({
     name: file.name,
     type: fileType,
     url: dropboxUrl,
@@ -112,25 +139,33 @@ async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>) 
     dropbox_path: file.path_lower,
     tags: [],
     analyzed: false
-  })
+  }).select('id').single()
+
+  if (tagOnSync && inserted?.id) {
+    await tagAsset(inserted.id, origin)
+  }
 
   return { status: 'processed', name: file.name }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { path = '', limit = 25, specificFiles = [] } = await req.json()
+    const { path = '', limit = 25, specificFiles = [], tagOnSync = false, autoBatch = false } = await req.json()
 
     const token = await getDropboxToken()
     const dbx = new Dropbox({ accessToken: token, fetch: fetch })
 
+    const origin = req.headers.get('x-forwarded-host')
+      ? `https://${req.headers.get('x-forwarded-host')}`
+      : req.nextUrl.origin
+
     const { data: existing } = await supabase.from('assets').select('dropbox_path')
     const existingPaths = new Set((existing || []).map((a: any) => a.dropbox_path))
 
-    let filesToProcess: any[] = []
+    let allFiles: any[] = []
 
     if (specificFiles.length > 0) {
-      filesToProcess = specificFiles.map((p: string) => ({
+      allFiles = specificFiles.map((p: string) => ({
         path_lower: p,
         name: p.split('/').pop() || p
       }))
@@ -140,11 +175,13 @@ export async function POST(req: NextRequest) {
       }
       const files = await listAllFiles(dbx, path)
       const mediaFiles = files.filter((f: any) => getFileType(f.name) !== null)
-      const newFiles = mediaFiles.filter((f: any) => !existingPaths.has(f.path_lower))
-      filesToProcess = newFiles.slice(0, limit)
+      allFiles = mediaFiles.filter((f: any) => !existingPaths.has(f.path_lower))
     }
 
+    const grandTotal = allFiles.length
+    const filesToProcess = autoBatch ? allFiles : allFiles.slice(0, limit)
     const total = filesToProcess.length
+
     let processed = 0
     let failed = 0
     let skipped = 0
@@ -156,25 +193,25 @@ export async function POST(req: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
         }
 
-        send({ type: 'start', total })
+        send({ type: 'start', total, grandTotal })
 
         for (const file of filesToProcess) {
           try {
-            const result = await processFile(dbx, file, existingPaths)
+            const result = await processFile(dbx, file, existingPaths, tagOnSync, origin)
             if (result.status === 'processed') {
               processed++
-              send({ type: 'progress', processed, failed, skipped, total, current: file.name })
+              send({ type: 'progress', processed, failed, skipped, total, grandTotal, current: file.name })
             } else {
               skipped++
             }
           } catch (err) {
             console.error(`Failed to process ${file.name}:`, err)
             failed++
-            send({ type: 'progress', processed, failed, skipped, total, current: file.name })
+            send({ type: 'progress', processed, failed, skipped, total, grandTotal, current: file.name })
           }
         }
 
-        send({ type: 'complete', processed, failed, skipped, total })
+        send({ type: 'complete', processed, failed, skipped, total, grandTotal, hasMore: grandTotal > total && !autoBatch })
         controller.close()
       }
     })
