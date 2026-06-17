@@ -104,6 +104,7 @@ async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>, 
   }
 
   let dropboxUrl = ''
+  console.log('File ID:', file.id, 'path:', file.path_lower)
   try {
     const linkResult = await dbx.sharingCreateSharedLinkWithSettings({ path: file.path_lower })
     dropboxUrl = linkResult.result.url.replace('?dl=0', '?raw=1')
