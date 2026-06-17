@@ -35,6 +35,7 @@ export default function Home() {
   const [syncPath, setSyncPath] = useState('')
   const [tagOnSync, setTagOnSync] = useState(true)
   const [showFolderBrowser, setShowFolderBrowser] = useState(false)
+  const ROOT_PATH = '/hdlf team'
   const [browserPath, setBrowserPath] = useState('')
   const [browserFolders, setBrowserFolders] = useState<Folder[]>([])
   const [browserFiles, setBrowserFiles] = useState<BrowseFile[]>([])
@@ -737,7 +738,7 @@ export default function Home() {
                   ←
                 </button>
               )}
-              <button onClick={() => { setBrowserHistory([]); browseTo('') }}
+              <button onClick={() => { setBrowserHistory([]); browseTo(ROOT_PATH) }}
                 className="text-neutral-600 hover:text-neutral-300 text-xs transition-colors">
                 Dropbox
               </button>
