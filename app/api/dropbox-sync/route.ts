@@ -31,7 +31,7 @@ async function listAllFiles(dbx: Dropbox, path: string): Promise<any[]> {
   return files.filter((f: any) => f['.tag'] === 'file')
 }
 
-async function generateThumbnail(buffer: Buffer, fileName: string): Promise<Buffer | null> {
+async function generateImageThumbnail(buffer: Buffer, fileName: string): Promise<Buffer | null> {
   try {
     let jpegBuffer = buffer
     if (isHeic(fileName)) {
@@ -46,7 +46,33 @@ async function generateThumbnail(buffer: Buffer, fileName: string): Promise<Buff
       .jpeg({ quality: 80 })
       .toBuffer()
   } catch (err) {
-    console.error('Thumbnail generation failed:', err)
+    console.error('Image thumbnail failed:', err)
+    return null
+  }
+}
+
+async function generatePdfThumbnail(buffer: Buffer): Promise<Buffer | null> {
+  try {
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs' as any)
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) })
+    const pdf = await loadingTask.promise
+    const page = await pdf.getPage(1)
+    const viewport = page.getViewport({ scale: 1.5 })
+
+    const { createCanvas } = await import('canvas')
+    const canvas = createCanvas(viewport.width, viewport.height)
+    const context = canvas.getContext('2d')
+
+    await page.render({ canvasContext: context as any, viewport }).promise
+
+    const sharp = (await import('sharp')).default
+    const pngBuffer = canvas.toBuffer('image/png')
+    return await sharp(pngBuffer)
+      .resize(400, 300, { fit: 'cover' })
+      .jpeg({ quality: 80 })
+      .toBuffer()
+  } catch (err) {
+    console.error('PDF thumbnail failed:', err)
     return null
   }
 }
@@ -61,22 +87,23 @@ async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>) 
   const buffer = Buffer.from(arrayBuffer)
 
   let thumbnailUrl = ''
-  if (fileType === 'image') {
-    try {
-      const thumbnail = await generateThumbnail(buffer, file.name)
-      if (thumbnail) {
-        const thumbName = `${Date.now()}_${file.name.replace(/\.[^.]+$/, '')}.jpg`
-        const { data: uploadData } = await supabase.storage
-          .from('thumbnails')
-          .upload(thumbName, thumbnail, { contentType: 'image/jpeg' })
-        if (uploadData) {
-          const { data: urlData } = supabase.storage.from('thumbnails').getPublicUrl(thumbName)
-          thumbnailUrl = urlData.publicUrl
-        }
+  try {
+    let thumbnail: Buffer | null = null
+    if (fileType === 'image') thumbnail = await generateImageThumbnail(buffer, file.name)
+    else if (fileType === 'document') thumbnail = await generatePdfThumbnail(buffer)
+
+    if (thumbnail) {
+      const thumbName = `${Date.now()}_${file.name.replace(/\.[^.]+$/, '')}.jpg`
+      const { data: uploadData } = await supabase.storage
+        .from('thumbnails')
+        .upload(thumbName, thumbnail, { contentType: 'image/jpeg' })
+      if (uploadData) {
+        const { data: urlData } = supabase.storage.from('thumbnails').getPublicUrl(thumbName)
+        thumbnailUrl = urlData.publicUrl
       }
-    } catch (thumbErr) {
-      console.error('Thumbnail failed for', file.name, thumbErr)
     }
+  } catch (thumbErr) {
+    console.error('Thumbnail failed for', file.name, thumbErr)
   }
 
   let dropboxUrl = ''
