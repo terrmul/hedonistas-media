@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
 
       try {
         const sharp = (await import('sharp')).default
-        imageBuffer = await sharp(rawBuffer)
+        // failOn: 'none' tells sharp to be lenient with unusual files
+        imageBuffer = await sharp(rawBuffer, { failOn: 'none' })
           .rotate()
           .resize(1600, 1600, { fit: 'inside' })
           .jpeg({ quality: 85 })
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
           const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
           tags = parsed.tags || []
           description = parsed.description || ''
+          console.log('Claude tagging succeeded:', tags)
         } catch (claudeErr) {
           console.error('Claude failed:', claudeErr)
           tags = filenameTags(asset.name)
