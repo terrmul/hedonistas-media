@@ -32,20 +32,20 @@
   - Then update all routes to use getDropboxToken() from lib/dropbox.ts
   - Currently getting 401 error on browse - old token expired
 
-## TODO
-- Fix Dropbox 401 (complete OAuth flow)
-- Update all Dropbox routes to use getDropboxToken()
-- Dropbox webhook for auto-sync
-- Fix video thumbnails on Vercel (ffmpeg)
-- Fix PDF thumbnails on Vercel (qlmanage is Mac only)
-- Fix HEIC on Vercel
 
-## Tech Stack
-- Next.js 16.2.9
-- Supabase (db + auth)
-- Anthropic Claude Sonnet 4.6
-- Sharp 0.33.5
-- Dropbox SDK
-- ffmpeg at /usr/local/bin/ffmpeg
-- Tailwind CSS
-- Deployed on Vercel
+## TODO (updated)
+
+### High priority
+- **Admin-only sync** — only terry@hedonistasmezcal.com sees the Choose Folder / sync button; all other logged-in users only see drag and drop
+- **Autosync on Dropbox changes** — webhook already built, needs to handle both additions AND deletions so database always mirrors HDLF Team folder
+- **MP4 thumbnails** — video files not pulling thumbnails during sync, needs fix
+- **Drag & drop uploads go to Dropbox** — when a user drops a file, upload it to a specific Dropbox folder (e.g. /HDLF Team/Imported Files) instead of just Supabase storage
+
+### Already built, needs registering
+- Dropbox webhook route exists at /api/dropbox-webhook — needs to be registered in Dropbox App Console
+
+### Done this session
+- Fixed sync stalling: switched to Dropbox native thumbnails (no full file download)
+- Added cursor persistence so sync resumes after timeout
+- Fixed Supabase 1000 row limit (now 20000)
+- Batch size increased to 100, shared link creation removed from import
