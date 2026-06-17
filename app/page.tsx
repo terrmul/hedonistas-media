@@ -620,8 +620,7 @@ export default function Home() {
           {selected.dropbox_path && (
             <div className="flex gap-2 mb-4">
               <a href={`/api/dropbox-download?path=${encodeURIComponent(selected.dropbox_path)}&name=${encodeURIComponent(selected.name)}`} download={selected.name} className="flex-1 text-center text-xs bg-amber-600 hover:bg-amber-500 text-white py-1.5 rounded-lg transition-colors">Download</a>
-              <a href={selected.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-center text-xs border border-neutral-700 hover:border-amber-600 text-neutral-400 hover:text-amber-500 py-1.5 rounded-lg transition-colors">Open file</a>
-              <a href={`https://www.dropbox.com/home${selected.dropbox_path.substring(0, selected.dropbox_path.lastIndexOf('/'))}`} target="_blank" rel="noopener noreferrer" className="flex-1 text-center text-xs border border-neutral-700 hover:border-amber-600 text-neutral-400 hover:text-amber-500 py-1.5 rounded-lg transition-colors">Open folder</a>
+              <a href={selected.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-center text-xs border border-neutral-700 hover:border-amber-600 text-neutral-400 hover:text-amber-500 py-1.5 rounded-lg transition-colors">Open in Dropbox</a>
             </div>
           )}
           {selected.description && (
