@@ -33,6 +33,7 @@ export default function Home() {
   const [syncResult, setSyncResult] = useState<any>(null)
   const [syncProgress, setSyncProgress] = useState({ processed: 0, total: 0, current: '' })
   const [syncPath, setSyncPath] = useState('')
+  const [tagOnSync, setTagOnSync] = useState(false)
   const [showFolderBrowser, setShowFolderBrowser] = useState(false)
   const [browserPath, setBrowserPath] = useState('')
   const [browserFolders, setBrowserFolders] = useState<Folder[]>([])
@@ -139,36 +140,52 @@ export default function Home() {
     }
   }
 
-  async function runSync(body: object) {
+  async function runSync(path: string, tag: boolean) {
     setSyncing(true)
     setSyncResult(null)
     setSyncProgress({ processed: 0, total: 0, current: '' })
+    let totalProcessed = 0
+    let totalFailed = 0
+    let totalSkipped = 0
+    let grandTotal = 0
     try {
-      const res = await fetch('/api/dropbox-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-      const reader = res.body?.getReader()
-      const decoder = new TextDecoder()
-      if (!reader) throw new Error('No response body')
       while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n').filter(l => l.startsWith('data: '))
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line.slice(6))
-            if (data.type === 'progress') {
-              setSyncProgress({ processed: data.processed, total: data.total, current: data.current })
-            } else if (data.type === 'complete') {
-              setSyncResult(data)
-              await fetchAssets()
-            }
-          } catch {}
+        const res = await fetch('/api/dropbox-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path, limit: 25, tagOnSync: tag, autoBatch: false })
+        })
+        const reader = res.body?.getReader()
+        const decoder = new TextDecoder()
+        if (!reader) throw new Error('No response body')
+        let batchComplete: any = null
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value)
+          const lines = chunk.split('\n').filter(l => l.startsWith('data: '))
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.type === 'start') {
+                grandTotal = data.grandTotal || 0
+              } else if (data.type === 'progress') {
+                totalProcessed += data.processed - (batchComplete?.processed || 0)
+                setSyncProgress({ processed: totalProcessed, total: grandTotal, current: data.current })
+              } else if (data.type === 'complete') {
+                batchComplete = data
+                totalProcessed = data.processed + (totalProcessed - data.processed)
+                totalFailed += data.failed || 0
+                totalSkipped += data.skipped || 0
+              }
+            } catch {}
+          }
         }
+        await fetchAssets()
+        if (!batchComplete || batchComplete.processed === 0) break
+        if (!batchComplete.hasMore) break
       }
+      setSyncResult({ processed: totalProcessed, failed: totalFailed, skipped: totalSkipped, remaining: 0 })
     } catch (err) {
       setSyncResult({ error: 'Sync failed' })
     }
@@ -181,11 +198,43 @@ export default function Home() {
     const syncAll = specificFiles.length === 0
     setShowFolderBrowser(false)
     if (syncAll) setSyncPath(browserPath)
-    await runSync(
-      syncAll
-        ? { path: browserPath, limit: 25 }
-        : { specificFiles, path: browserPath }
-    )
+    if (syncAll) {
+      await runSync(browserPath, tagOnSync)
+    } else {
+      setSyncing(true)
+      setSyncResult(null)
+      try {
+        const res = await fetch('/api/dropbox-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ specificFiles, path: browserPath, tagOnSync })
+        })
+        const reader = res.body?.getReader()
+        const decoder = new TextDecoder()
+        if (!reader) throw new Error('No response body')
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value)
+          const lines = chunk.split('\n').filter(l => l.startsWith('data: '))
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.type === 'progress') {
+                setSyncProgress({ processed: data.processed, total: data.total, current: data.current })
+              } else if (data.type === 'complete') {
+                setSyncResult(data)
+                await fetchAssets()
+              }
+            } catch {}
+          }
+        }
+      } catch (err) {
+        setSyncResult({ error: 'Sync failed' })
+      }
+      setSyncing(false)
+      setSyncProgress({ processed: 0, total: 0, current: '' })
+    }
   }
 
   async function convertHeicToJpeg(file: File): Promise<File> {
@@ -419,10 +468,17 @@ export default function Home() {
               Choose folder
             </button>
             {syncPath && (
-              <button onClick={() => runSync({ path: syncPath, limit: 25 })} disabled={syncing}
-                className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-amber-600 hover:text-amber-600 transition-colors whitespace-nowrap">
-                {syncing ? 'Syncing...' : 'Sync Dropbox'}
-              </button>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 text-xs text-neutral-400 cursor-pointer">
+                  <input type="checkbox" checked={tagOnSync} onChange={e => setTagOnSync(e.target.checked)}
+                    className="w-3 h-3 rounded accent-amber-500" />
+                  Tag on sync
+                </label>
+                <button onClick={() => runSync(syncPath, tagOnSync)} disabled={syncing}
+                  className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-amber-600 hover:text-amber-600 transition-colors whitespace-nowrap">
+                  {syncing ? 'Syncing...' : 'Sync Dropbox'}
+                </button>
+              </div>
             )}
           </div>
         </div>
