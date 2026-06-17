@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Dropbox } from 'dropbox'
 import { supabase } from '@/lib/supabase'
+import sharp from 'sharp'
 import { execSync } from 'child_process'
 import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync, readdirSync } from 'fs'
 import { join } from 'path'
@@ -32,18 +33,13 @@ async function listAllFiles(path: string): Promise<any[]> {
 }
 
 async function generateImageThumbnail(buffer: Buffer): Promise<Buffer | null> {
-  const tmpDir = tmpdir()
-  const inputPath = join(tmpDir, `thumb_in_${Date.now()}.jpg`)
-  const outputPath = join(tmpDir, `thumb_out_${Date.now()}.jpg`)
   try {
-    writeFileSync(inputPath, buffer)
-    execSync(`sips -s format jpeg -Z 400 "${inputPath}" --out "${outputPath}"`)
-    const result = readFileSync(outputPath)
-    try { unlinkSync(inputPath) } catch {}
-    try { unlinkSync(outputPath) } catch {}
-    return result
+    return await sharp(buffer)
+      .rotate()
+      .resize(400, 300, { fit: 'cover', position: 'centre' })
+      .jpeg({ quality: 80 })
+      .toBuffer()
   } catch {
-    try { unlinkSync(inputPath) } catch {}
     return null
   }
 }

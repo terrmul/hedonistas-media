@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import sharp from 'sharp'
 import { execSync } from 'child_process'
 import { writeFileSync, readFileSync, unlinkSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
+
+function isHeic(buffer: Buffer): boolean {
+  const hex = buffer.slice(4, 12).toString('hex')
+  return hex.includes('6674797068656963') || hex.includes('6674797068656966')
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +24,6 @@ export async function POST(req: NextRequest) {
     writeFileSync(inputPath, buffer)
     execSync(`sips -s format jpeg "${inputPath}" --out "${outputPath}"`)
     const converted = readFileSync(outputPath)
-
     try { unlinkSync(inputPath) } catch {}
     try { unlinkSync(outputPath) } catch {}
 

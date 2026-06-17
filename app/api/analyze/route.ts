@@ -1,49 +1,47 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
-import { execSync, spawnSync } from 'child_process'
-import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs'
+import sharp from 'sharp'
+import { execSync } from 'child_process'
+import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-function convertToJpeg(buffer: Buffer, fileName: string): Buffer {
-  const tmpDir = tmpdir()
-  const ext = fileName.toLowerCase().split('.').pop() || 'jpg'
-  const inputPath = join(tmpDir, `analyze_in_${Date.now()}.${ext}`)
-  const outputPath = join(tmpDir, `analyze_out_${Date.now()}.jpg`)
+async function convertToJpeg(buffer: Buffer, fileName: string): Promise<Buffer> {
+  const ext = fileName.toLowerCase().split('.').pop() || ''
 
-  writeFileSync(inputPath, buffer)
-
-  try {
-    if (ext === 'pdf') {
-      const { readdirSync } = require('fs')
-      const tmpOut = join(tmpDir, `ql_out_${Date.now()}`)
-      mkdirSync(tmpOut, { recursive: true })
-      execSync(`qlmanage -t -s 1600 -o "${tmpOut}" "${inputPath}" 2>/dev/null`)
-      const qlFiles = readdirSync(tmpOut).filter((f: string) => f.endsWith('.png'))
-      const qlFile = qlFiles.length > 0 ? join(tmpOut, qlFiles[0]) : null
-      if (qlFile && existsSync(qlFile)) {
-        execSync(`sips -s format jpeg "${qlFile}" --out "${outputPath}"`)
-        try { unlinkSync(qlFile) } catch {}
-      }
-    } else {
-      execSync(`sips -s format jpeg -Z 1600 "${inputPath}" --out "${outputPath}"`)
-    }
-
-    if (existsSync(outputPath)) {
-      const result = readFileSync(outputPath)
+  if (ext === 'pdf') {
+    const tmpDir = tmpdir()
+    const inputPath = join(tmpDir, `pdf_in_${Date.now()}_${fileName}`)
+    const outputPath = join(tmpDir, `pdf_out_${Date.now()}.jpg`)
+    writeFileSync(inputPath, buffer)
+    const tmpOut = join(tmpDir, `ql_out_${Date.now()}`)
+    mkdirSync(tmpOut, { recursive: true })
+    execSync(`qlmanage -t -s 1600 -o "${tmpOut}" "${inputPath}" 2>/dev/null`)
+    const qlFiles = readdirSync(tmpOut).filter((f: string) => f.endsWith('.png'))
+    const qlFile = qlFiles.length > 0 ? join(tmpOut, qlFiles[0]) : null
+    if (qlFile && existsSync(qlFile)) {
+      const pdfBuffer = readFileSync(qlFile)
+      const result = await sharp(pdfBuffer).jpeg({ quality: 85 }).toBuffer()
+      try { unlinkSync(qlFile) } catch {}
       try { unlinkSync(inputPath) } catch {}
-      try { unlinkSync(outputPath) } catch {}
       return result
     }
-  } catch (err) {
-    console.error('Conversion error:', err)
+    try { unlinkSync(inputPath) } catch {}
+    return buffer
   }
 
-  try { unlinkSync(inputPath) } catch {}
-  try { unlinkSync(outputPath) } catch {}
-  return buffer
+  // Use sharp for all image formats
+  try {
+    return await sharp(buffer)
+      .rotate()
+      .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toBuffer()
+  } catch {
+    return buffer
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -57,9 +55,8 @@ export async function POST(req: NextRequest) {
     if (type === 'image') {
       const bytes = await file.arrayBuffer()
       const rawBuffer = Buffer.from(bytes)
-      const converted = convertToJpeg(rawBuffer, file.name)
+      const converted = await convertToJpeg(rawBuffer, file.name)
       const base64 = converted.toString('base64')
-
       const sizeMB = (converted.length / (1024 * 1024)).toFixed(1)
       console.log(`Analyzing upload ${file.name} — ${sizeMB}MB`)
 
