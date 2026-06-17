@@ -13,6 +13,14 @@ function getAssetType(fileName: string): 'image' | 'video' | 'document' {
   return 'image'
 }
 
+function detectMediaType(buffer: Buffer): 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' {
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8) return 'image/jpeg'
+  if (buffer[0] === 0x89 && buffer[1] === 0x50) return 'image/png'
+  if (buffer[0] === 0x52 && buffer[1] === 0x49) return 'image/webp'
+  if (buffer[0] === 0x47 && buffer[1] === 0x49) return 'image/gif'
+  return 'image/jpeg'
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { assetId } = await req.json()
@@ -37,16 +45,15 @@ export async function POST(req: NextRequest) {
 
       const assetType = getAssetType(asset.name)
 
-      let imageBuffer: Buffer = rawBuffer
-      let mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' = 'image/jpeg'
-
       if (assetType === 'video') {
-        // For videos, use filename-based tags since we can't extract frames easily on Vercel
         tags = asset.name.replace(/\.[^.]+$/, '').split(/[-_\s]+/).filter(Boolean).map((t: string) => t.toLowerCase())
         description = `Video: ${asset.name}`
         await supabase.from('assets').update({ tags, description, analyzed: true }).eq('id', asset.id)
         return NextResponse.json({ success: true, tags, description })
       }
+
+      let imageBuffer: Buffer = rawBuffer
+      let mediaType = detectMediaType(rawBuffer)
 
       if (assetType === 'image') {
         try {
@@ -55,6 +62,7 @@ export async function POST(req: NextRequest) {
           mediaType = 'image/jpeg'
         } catch {
           imageBuffer = rawBuffer
+          mediaType = detectMediaType(rawBuffer)
         }
       }
 
