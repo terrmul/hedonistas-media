@@ -195,9 +195,8 @@ export async function POST(req: NextRequest) {
               let thumbnailUrl = ''
               const thumb = await getDropboxThumbnail(dbx, file.path_lower)
               if (thumb) thumbnailUrl = await uploadThumbnail(thumb, file.name)
-              const dropboxUrl = await getDropboxUrl(dbx, file.path_lower, file.id)
               const { data: inserted } = await supabase.from('assets').insert({
-                name: file.name, type: fileType, url: dropboxUrl,
+                name: file.name, type: fileType, url: '',
                 thumbnail_url: thumbnailUrl, dropbox_path: file.path_lower,
                 tags: [], analyzed: false
               }).select('id').single()
