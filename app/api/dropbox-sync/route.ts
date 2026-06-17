@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Dropbox } from 'dropbox'
 import { getDropboxToken } from '@/lib/dropbox'
 import { supabase } from '@/lib/supabase'
-import { writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
-import { join } from 'path'
-import { tmpdir } from 'os'
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.tiff', '.tif']
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.wmv']
@@ -52,27 +49,17 @@ async function generateImageThumbnail(buffer: Buffer, fileName: string): Promise
   }
 }
 
-async function generateVideoThumbnail(buffer: Buffer, fileName: string): Promise<Buffer | null> {
-  const tmpDir = tmpdir()
-  const inputPath = join(tmpDir, `vid_${Date.now()}_${fileName}`)
-  const outputPath = join(tmpDir, `vid_thumb_${Date.now()}.jpg`)
+async function generateVideoThumbnail(dbx: Dropbox, filePath: string): Promise<Buffer | null> {
   try {
-    writeFileSync(inputPath, buffer)
-    const ffmpegPath = (await import('ffmpeg-static')).default
-    const { execSync } = await import('child_process')
-    execSync(`"${ffmpegPath}" -i "${inputPath}" -ss 00:00:03 -vframes 1 -vf scale=400:300 "${outputPath}" -y`, { timeout: 30000 })
-
-    if (existsSync(outputPath)) {
-      const frame = readFileSync(outputPath)
-      try { unlinkSync(inputPath) } catch {}
-      try { unlinkSync(outputPath) } catch {}
-      return frame
-    }
-    return null
+    const response = await (dbx as any).filesGetThumbnailV2({
+      resource: { '.tag': 'path', path: filePath },
+      format: { '.tag': 'jpeg' },
+      size: { '.tag': 'w640h480' }
+    }) as any
+    const arrayBuffer = await response.result.fileBlob.arrayBuffer()
+    return Buffer.from(arrayBuffer)
   } catch (err) {
-    console.error('Video thumbnail failed:', err)
-    try { unlinkSync(inputPath) } catch {}
-    try { unlinkSync(outputPath) } catch {}
+    console.error('Dropbox video thumbnail failed:', err)
     return null
   }
 }
@@ -200,7 +187,7 @@ export async function POST(req: NextRequest) {
           } catch (err) {
             console.error(`Failed to process ${file.name}:`, err)
             failed++
-            send({ type: 'progress', processed, failed, skipped, total, grandTotal, current: file.name })
+            send({ type: 'progress', processed, failed, skipped, total, current: file.name, grandTotal })
           }
         }
 
