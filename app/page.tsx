@@ -14,6 +14,7 @@ type Asset = {
   tags: string[]
   analyzed: boolean
   created_at: string
+  file_size: number | null
 }
 
 type Folder = { name: string; path: string }
@@ -640,7 +641,10 @@ export default function Home() {
                   )}
                 </div>
                 <div className="p-2.5 bg-neutral-900">
-                  <p className="text-xs text-neutral-300 truncate mb-1.5">{asset.name}</p>
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <p className="text-xs text-neutral-300 truncate">{asset.name}</p>
+                    {asset.file_size ? <span className="text-[10px] text-neutral-600 whitespace-nowrap flex-shrink-0">{asset.file_size < 1048576 ? Math.round(asset.file_size/1024)+'KB' : (asset.file_size/1048576).toFixed(1)+'MB'}</span> : null}
+                  </div>
                   <div className="flex flex-wrap gap-1">
                     {(asset.tags || []).slice(0,3).map(tag => (
                       <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-md bg-neutral-800 text-neutral-500">{tag}</span>

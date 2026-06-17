@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
               const { data: inserted } = await supabase.from('assets').insert({
                 name: file.name, type: fileType, url: '',
                 thumbnail_url: thumbnailUrl, dropbox_path: file.path_lower,
-                tags: [], analyzed: false
+                tags: [], analyzed: false, file_size: file.size || null
               }).select('id').single()
               if (tagOnSync && inserted?.id) {
                 fetch(`${origin}/api/tag-untagged`, {
