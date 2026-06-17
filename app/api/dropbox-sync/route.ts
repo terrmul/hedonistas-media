@@ -171,6 +171,13 @@ export async function POST(req: NextRequest) {
             files = response.result.entries.filter((e: any) => e['.tag'] === 'file')
             hasMore = response.result.has_more
             newCursor = response.result.cursor
+            // Keep paginating until we find media files or run out of pages
+            while (hasMore && files.filter((f: any) => !existingPaths.has(f.path_lower) && getFileType(f.name) !== null).length === 0) {
+              const next = await dbx.filesListFolderContinue({ cursor: newCursor })
+              files.push(...next.result.entries.filter((e: any) => e['.tag'] === 'file'))
+              hasMore = next.result.has_more
+              newCursor = next.result.cursor
+            }
           }
 
           const mediaFiles = files
