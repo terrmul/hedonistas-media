@@ -58,16 +58,9 @@ async function generateVideoThumbnail(buffer: Buffer, fileName: string): Promise
   const outputPath = join(tmpDir, `vid_thumb_${Date.now()}.jpg`)
   try {
     writeFileSync(inputPath, buffer)
-    const ffmpegInstaller = await import('@ffmpeg-installer/ffmpeg')
-    const ffmpeg = (await import('fluent-ffmpeg')).default
-    ffmpeg.setFfmpegPath(ffmpegInstaller.path)
-
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg(inputPath)
-        .screenshots({ timestamps: ['00:00:03'], filename: outputPath, size: '400x300' })
-        .on('end', resolve)
-        .on('error', reject)
-    })
+    const ffmpegPath = (await import('ffmpeg-static')).default
+    const { execSync } = await import('child_process')
+    execSync(`"${ffmpegPath}" -i "${inputPath}" -ss 00:00:03 -vframes 1 -vf scale=400:300 "${outputPath}" -y`, { timeout: 30000 })
 
     if (existsSync(outputPath)) {
       const frame = readFileSync(outputPath)
