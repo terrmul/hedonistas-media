@@ -33,7 +33,7 @@ export default function Home() {
   const [syncResult, setSyncResult] = useState<any>(null)
   const [syncProgress, setSyncProgress] = useState({ processed: 0, total: 0, current: '' })
   const [syncPath, setSyncPath] = useState('')
-  const [tagOnSync, setTagOnSync] = useState(false)
+  const [tagOnSync, setTagOnSync] = useState(true)
   const [showFolderBrowser, setShowFolderBrowser] = useState(false)
   const [browserPath, setBrowserPath] = useState('')
   const [browserFolders, setBrowserFolders] = useState<Folder[]>([])
@@ -471,17 +471,10 @@ export default function Home() {
               Choose folder
             </button>
             {syncPath && (
-              <div className="flex items-center gap-2">
-                <label className="flex items-center gap-1.5 text-xs text-neutral-400 cursor-pointer">
-                  <input type="checkbox" checked={tagOnSync} onChange={e => setTagOnSync(e.target.checked)}
-                    className="w-3 h-3 rounded accent-amber-500" />
-                  Tag on sync
-                </label>
-                <button onClick={() => runSync(syncPath, tagOnSync)} disabled={syncing}
+              <button onClick={() => runSync(syncPath, tagOnSync)} disabled={syncing}
                   className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-amber-600 hover:text-amber-600 transition-colors whitespace-nowrap">
                   {syncing ? 'Syncing...' : 'Sync Dropbox'}
                 </button>
-              </div>
             )}
           </div>
         </div>
@@ -838,9 +831,9 @@ export default function Home() {
                   className="px-4 py-2 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-600 transition-colors">
                   Cancel
                 </button>
-                <label className="flex items-center gap-1.5 text-xs text-neutral-400 cursor-pointer whitespace-nowrap">
+                <label className="flex items-center gap-2 text-sm text-neutral-300 cursor-pointer whitespace-nowrap">
                   <input type="checkbox" checked={tagOnSync} onChange={e => setTagOnSync(e.target.checked)}
-                    className="w-3 h-3 rounded accent-amber-500" />
+                    className="w-4 h-4 rounded accent-amber-500" />
                   Tag on sync
                 </label>
                 <button onClick={syncSelected} disabled={!browserPath}
