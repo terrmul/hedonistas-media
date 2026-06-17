@@ -110,7 +110,7 @@ async function processFile(dbx: Dropbox, file: any, existingPaths: Set<string>, 
   try {
     let thumbnail: Buffer | null = null
     if (fileType === 'image') thumbnail = await generateImageThumbnail(buffer, file.name)
-    else if (fileType === 'video') thumbnail = await generateVideoThumbnail(buffer, file.name)
+    else if (fileType === 'video') thumbnail = await generateVideoThumbnail(dbx, file.path_lower)
     if (thumbnail) thumbnailUrl = await uploadThumbnail(thumbnail, file.name)
   } catch (thumbErr) {
     console.error('Thumbnail failed for', file.name, thumbErr)
