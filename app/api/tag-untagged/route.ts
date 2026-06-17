@@ -13,8 +13,36 @@ function getAssetType(fileName: string): 'image' | 'video' | 'document' {
   return 'image'
 }
 
+function isHeic(fileName: string): boolean {
+  const ext = fileName.toLowerCase().split('.').pop() || ''
+  return ext === 'heic' || ext === 'heif'
+}
+
 function filenameTags(name: string): string[] {
   return name.replace(/\.[^.]+$/, '').split(/[-_\s]+/).filter(Boolean).map(t => t.toLowerCase())
+}
+
+async function toJpegBuffer(rawBuffer: Buffer, fileName: string): Promise<Buffer | null> {
+  try {
+    if (isHeic(fileName)) {
+      const heicConvert = (await import('heic-convert')).default
+      const converted = await heicConvert({
+        buffer: rawBuffer,
+        format: 'JPEG',
+        quality: 0.85
+      })
+      return Buffer.from(converted)
+    }
+    const sharp = (await import('sharp')).default
+    return await sharp(rawBuffer, { failOn: 'none' })
+      .rotate()
+      .resize(1600, 1600, { fit: 'inside' })
+      .jpeg({ quality: 85 })
+      .toBuffer()
+  } catch (err) {
+    console.error('Image conversion failed:', err)
+    return null
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -41,21 +69,7 @@ export async function POST(req: NextRequest) {
       const arrayBuffer = await download.result.fileBlob.arrayBuffer()
       const rawBuffer = Buffer.from(arrayBuffer)
 
-      let imageBuffer: Buffer | null = null
-
-      try {
-        const sharp = (await import('sharp')).default
-        // failOn: 'none' tells sharp to be lenient with unusual files
-        imageBuffer = await sharp(rawBuffer, { failOn: 'none' })
-          .rotate()
-          .resize(1600, 1600, { fit: 'inside' })
-          .jpeg({ quality: 85 })
-          .toBuffer()
-        console.log('sharp conversion succeeded, size:', imageBuffer.length)
-      } catch (sharpErr) {
-        console.error('sharp failed:', sharpErr)
-        imageBuffer = null
-      }
+      const imageBuffer = await toJpegBuffer(rawBuffer, asset.name)
 
       if (imageBuffer) {
         try {
@@ -75,7 +89,6 @@ export async function POST(req: NextRequest) {
           const parsed = JSON.parse(text.replace(/```json|```/g, '').trim())
           tags = parsed.tags || []
           description = parsed.description || ''
-          console.log('Claude tagging succeeded:', tags)
         } catch (claudeErr) {
           console.error('Claude failed:', claudeErr)
           tags = filenameTags(asset.name)
