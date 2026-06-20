@@ -370,12 +370,35 @@ export default function Home() {
           }
         } catch (err) { console.error('Thumbnail failed:', err) }
       }
-      const url = URL.createObjectURL(converted)
+
+      let dropboxUrl = ''
+      let dropboxPath = ''
+      let dropboxId = ''
+      let fileSize: number | null = file.size || null
+      try {
+        const dbxFormData = new FormData()
+        dbxFormData.append('file', file)
+        const dbxRes = await fetch('/api/upload-to-dropbox', { method: 'POST', body: dbxFormData })
+        if (dbxRes.ok) {
+          const dbxData = await dbxRes.json()
+          dropboxUrl = dbxData.url || ''
+          dropboxPath = dbxData.dropbox_path || ''
+          dropboxId = dbxData.dropbox_id || ''
+          fileSize = dbxData.file_size || fileSize
+        } else {
+          console.error('Dropbox upload failed:', await dbxRes.text())
+        }
+      } catch (err) { console.error('Dropbox upload failed:', err) }
+
+      const fallbackUrl = URL.createObjectURL(converted)
       const { data } = await supabase.from('assets').insert({
         name: converted.name,
         type: isVideo ? 'video' : 'image',
-        url: thumbnailUrl || url,
+        url: dropboxUrl || thumbnailUrl || fallbackUrl,
         thumbnail_url: thumbnailUrl,
+        dropbox_path: dropboxPath || null,
+        dropbox_id: dropboxId || null,
+        file_size: fileSize,
         tags: [],
         analyzed: false
       }).select().single()
