@@ -87,6 +87,7 @@ export default function Home() {
   useEffect(() => {
     const terms = search.toLowerCase().split(' ').filter(Boolean)
     const results = assets.filter(a => {
+      if (typeFilter === 'no-thumbnail') return !a.thumbnail_url
       if (typeFilter !== 'all' && a.type !== typeFilter) return false
       if (!terms.length) return true
       const hay = [...(a.tags || []), a.name, a.description].join(' ').toLowerCase()
@@ -654,6 +655,12 @@ export default function Home() {
               {f === 'all' ? 'All' : f === 'image' ? 'Images' : 'Video'}
             </button>
           ))}
+          {missingThumbCount > 0 && (
+            <button onClick={() => setTypeFilter('no-thumbnail')}
+              className={`px-4 py-1.5 rounded-full text-xs border transition-colors ${typeFilter === 'no-thumbnail' ? 'bg-red-700 border-red-700 text-white font-medium' : 'border-red-900 text-red-500 hover:border-red-700'}`}>
+              No thumbnail ({missingThumbCount})
+            </button>
+          )}
           <span className="text-xs text-neutral-600">{filtered.length} results</span>
           <div className="ml-auto flex gap-2">
             {selectMode && (
