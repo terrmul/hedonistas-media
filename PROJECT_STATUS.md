@@ -49,3 +49,20 @@
 - Added cursor persistence so sync resumes after timeout
 - Fixed Supabase 1000 row limit (now 20000)
 - Batch size increased to 100, shared link creation removed from import
+
+### Dropbox sync behavior (added this session)
+- Re-import deleted files prompt: if a file was previously imported then deleted
+  from the library (but still exists in Dropbox), a new sync should detect this
+  and ask if these previously-deleted files should be reimported, rather than
+  silently skipping or silently reimporting. Requires tracking deleted
+  dropbox_paths (a tombstone list) so we can tell "deleted on purpose" apart
+  from "never imported".
+- Never import duplicates: sync already treats same dropbox_path as same asset;
+  confirm this holds even if a file is reachable via two different paths.
+- Per-user delete permissions: a user should only be able to delete assets they
+  personally imported or uploaded. Requires tracking who imported/uploaded each
+  asset (an uploaded_by / imported_by column) and checking it before allowing delete.
+- Auto-import new Dropbox files + admin prompt: when new files land in the HDLF
+  Team folder, auto-import them in the background via the webhook, then show
+  the admin (Terry) a notification next time the page loads: "X new files were
+  added from Dropbox" with a review/confirm option.
