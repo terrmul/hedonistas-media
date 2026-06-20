@@ -459,7 +459,11 @@ export default function Home() {
     setDeleting(true)
     const ids = Array.from(selectedIds)
     await supabase.from('assets').delete().in('id', ids)
-    setAssets(prev => prev.filter(a => !selectedIds.has(a.id)))
+    setAssets(prev => {
+      const next = prev.filter(a => !selectedIds.has(a.id))
+      setMissingThumbCount(next.filter(a => !a.thumbnail_url).length)
+      return next
+    })
     if (selected && selectedIds.has(selected.id)) setSelected(null)
     setSelectedIds(new Set())
     setSelectMode(false)
