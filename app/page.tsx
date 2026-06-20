@@ -625,6 +625,12 @@ export default function Home() {
           </div>
         )}
 
+        {!fixingThumbs && fixThumbsResult && (
+          <div className="mb-4 p-3 rounded-xl text-xs border bg-neutral-900 text-neutral-400 border-neutral-800">
+            Thumbnail repair finished — {fixThumbsResult.fixed} fixed, {fixThumbsResult.failed} could not be generated (likely restricted or unsupported files in Dropbox)
+          </div>
+        )}
+
         <div className="block border border-dashed border-neutral-700 rounded-xl p-8 text-center cursor-pointer hover:border-amber-600 transition-colors mb-6"
           onClick={() => document.getElementById('fileInput')?.click()}
           onDragOver={e => { e.preventDefault(); e.stopPropagation() }}

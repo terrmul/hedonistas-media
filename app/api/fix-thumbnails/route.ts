@@ -102,7 +102,12 @@ export async function POST(req: NextRequest) {
       .select('id', { count: 'exact', head: true })
       .eq('thumbnail_url', '')
 
-    return NextResponse.json({ processed, failed, remaining: remaining || 0, done: (remaining || 0) === 0 })
+    return NextResponse.json({
+      processed,
+      failed,
+      remaining: remaining || 0,
+      done: (remaining || 0) === 0 || processed === 0
+    })
   } catch (err) {
     console.error('Fix thumbnails error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
