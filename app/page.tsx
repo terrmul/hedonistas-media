@@ -36,6 +36,13 @@ export default function Home() {
   const [syncPath, setSyncPath] = useState('')
   const [tagOnSync, setTagOnSync] = useState(true)
   const [showFolderBrowser, setShowFolderBrowser] = useState(false)
+  const [showDuplicates, setShowDuplicates] = useState(false)
+  const [duplicateGroups, setDuplicateGroups] = useState<Asset[][]>([])
+  const [dupesToDelete, setDupesToDelete] = useState<Set<string>>(new Set())
+  const [deletingDupes, setDeletingDupes] = useState(false)
+  const [fixingThumbs, setFixingThumbs] = useState(false)
+  const [fixThumbsResult, setFixThumbsResult] = useState<{ fixed: number; failed: number } | null>(null)
+  const [missingThumbCount, setMissingThumbCount] = useState(0)
   const ROOT_PATH = '/hdlf team'
   const [browserPath, setBrowserPath] = useState('')
   const [browserFolders, setBrowserFolders] = useState<Folder[]>([])
@@ -68,7 +75,11 @@ export default function Home() {
 
   const fetchAssets = useCallback(async () => {
     const { data } = await supabase.from('assets').select('*').order('created_at', { ascending: false }).limit(20000)
-    if (data) { setAssets(data); setFiltered(data) }
+    if (data) {
+      setAssets(data)
+      setFiltered(data)
+      setMissingThumbCount(data.filter(a => !a.thumbnail_url).length)
+    }
   }, [])
 
   useEffect(() => { fetchAssets() }, [fetchAssets])
@@ -111,6 +122,76 @@ export default function Home() {
     setShowFolderBrowser(true)
     setSelectedFiles(new Set())
     browseTo(browserPath || ROOT_PATH)
+  }
+
+  function findDuplicates() {
+    const byName = new Map<string, Asset[]>()
+    for (const a of assets) {
+      const key = a.name.toLowerCase().trim()
+      if (!byName.has(key)) byName.set(key, [])
+      byName.get(key)!.push(a)
+    }
+    const groups = Array.from(byName.values())
+      .filter(g => g.length > 1)
+      .sort((a, b) => b.length - a.length)
+    setDuplicateGroups(groups)
+    setDupesToDelete(new Set())
+    setShowDuplicates(true)
+  }
+
+  function toggleDupeDelete(id: string) {
+    setDupesToDelete(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function deleteSelectedDupes() {
+    if (dupesToDelete.size === 0) return
+    setDeletingDupes(true)
+    try {
+      const ids = Array.from(dupesToDelete)
+      await supabase.from('assets').delete().in('id', ids)
+      setDuplicateGroups(prev => prev
+        .map(g => g.filter(a => !dupesToDelete.has(a.id)))
+        .filter(g => g.length > 1)
+      )
+      setDupesToDelete(new Set())
+      await fetchAssets()
+    } catch (err) {
+      console.error('Failed to delete duplicates:', err)
+    }
+    setDeletingDupes(false)
+  }
+
+  async function fixBrokenThumbnails() {
+    setFixingThumbs(true)
+    setFixThumbsResult(null)
+    let totalFixed = 0
+    let totalFailed = 0
+    try {
+      while (true) {
+        const res = await fetch('/api/fix-thumbnails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit: 30 })
+        })
+        const data = await res.json()
+        if (data.error) break
+        totalFixed += data.processed || 0
+        totalFailed += data.failed || 0
+        setFixThumbsResult({ fixed: totalFixed, failed: totalFailed })
+        setMissingThumbCount(data.remaining || 0)
+        await fetchAssets()
+        if (data.done || (data.processed === 0 && data.failed === 0)) break
+        await new Promise(r => setTimeout(r, 400))
+      }
+    } catch (err) {
+      console.error('Fix thumbnails failed:', err)
+    }
+    setFixingThumbs(false)
   }
 
   function navigateInto(folder: Folder) {
@@ -472,6 +553,18 @@ export default function Home() {
                 Stop tagging
               </button>
             )}
+            {missingThumbCount > 0 && (
+              <button onClick={fixBrokenThumbnails} disabled={fixingThumbs}
+                className="px-3 py-1.5 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 disabled:opacity-50 transition-colors whitespace-nowrap">
+                {fixingThumbs
+                  ? `Fixing thumbnails... ${fixThumbsResult?.fixed || 0} fixed`
+                  : `Fix ${missingThumbCount} broken thumbnail${missingThumbCount !== 1 ? 's' : ''}`}
+              </button>
+            )}
+            <button onClick={findDuplicates}
+              className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors whitespace-nowrap">
+              Find duplicates
+            </button>
             <button onClick={openFolderBrowser}
               className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors whitespace-nowrap">
               Choose folder
@@ -728,6 +821,77 @@ export default function Home() {
                 <span key={tag} className="text-xs px-2 py-1 rounded-lg bg-neutral-800 text-neutral-400">{tag}</span>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {showDuplicates && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-neutral-900 border border-neutral-700 rounded-2xl w-full max-w-2xl flex flex-col" style={{maxHeight: '85vh'}}>
+
+            <div className="px-5 py-4 border-b border-neutral-800 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Duplicate file names</p>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  {duplicateGroups.length === 0
+                    ? 'No duplicates found'
+                    : `${duplicateGroups.length} group${duplicateGroups.length !== 1 ? 's' : ''} of files sharing a name -- review and select which to delete`}
+                </p>
+              </div>
+              <button onClick={() => setShowDuplicates(false)}
+                className="w-7 h-7 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-neutral-400 hover:text-white transition-colors text-xs">
+                X
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {duplicateGroups.length === 0 && (
+                <div className="flex items-center justify-center py-12 text-sm text-neutral-500">
+                  Every file name in your library is unique
+                </div>
+              )}
+              {duplicateGroups.map((group, gi) => (
+                <div key={gi} className="border border-neutral-800 rounded-xl p-3">
+                  <p className="text-xs text-neutral-400 mb-2 truncate">{group[0].name} <span className="text-neutral-600">({group.length} copies)</span></p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {group.map(asset => {
+                      const marked = dupesToDelete.has(asset.id)
+                      return (
+                        <button key={asset.id} onClick={() => toggleDupeDelete(asset.id)}
+                          className={`relative rounded-lg overflow-hidden border-2 transition-colors text-left ${marked ? 'border-red-700' : 'border-neutral-800 hover:border-neutral-600'}`}>
+                          <div className="aspect-square bg-neutral-800 flex items-center justify-center">
+                            {asset.thumbnail_url ? (
+                              <img src={asset.thumbnail_url} alt={asset.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-neutral-600 text-xs">No preview</span>
+                            )}
+                          </div>
+                          {marked && (
+                            <div className="absolute inset-0 bg-red-950/60 flex items-center justify-center">
+                              <span className="text-[10px] font-medium text-red-400 bg-black/60 px-2 py-1 rounded">Will delete</span>
+                            </div>
+                          )}
+                          <div className="px-1.5 py-1 bg-neutral-900">
+                            <p className="text-[10px] text-neutral-500 truncate">{asset.dropbox_path ? asset.dropbox_path.split('/').slice(-2).join('/') : '--'}</p>
+                            {asset.file_size ? <p className="text-[9px] text-neutral-600">{asset.file_size < 1048576 ? Math.round(asset.file_size/1024)+'KB' : (asset.file_size/1048576).toFixed(1)+'MB'}</p> : null}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {duplicateGroups.length > 0 && (
+              <div className="px-5 py-4 border-t border-neutral-800 flex items-center justify-between">
+                <span className="text-xs text-neutral-500">{dupesToDelete.size} selected for deletion</span>
+                <button onClick={deleteSelectedDupes} disabled={dupesToDelete.size === 0 || deletingDupes}
+                  className="px-4 py-2 rounded-lg text-xs bg-red-900 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors">
+                  {deletingDupes ? 'Deleting...' : `Delete ${dupesToDelete.size} file${dupesToDelete.size !== 1 ? 's' : ''}`}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
