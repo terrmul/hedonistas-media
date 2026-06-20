@@ -852,7 +852,17 @@ export default function Home() {
               )}
               {duplicateGroups.map((group, gi) => (
                 <div key={gi} className="border border-neutral-800 rounded-xl p-3">
-                  <p className="text-xs text-neutral-400 mb-2 truncate">{group[0].name} <span className="text-neutral-600">({group.length} copies)</span></p>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-xs text-neutral-400 truncate">{group[0].name} <span className="text-neutral-600">({group.length} copies)</span></p>
+                    <button onClick={() => setDupesToDelete(prev => {
+                      const next = new Set(prev)
+                      group.slice(1).forEach(a => next.add(a.id))
+                      return next
+                    })}
+                      className="text-[10px] text-amber-500 hover:text-amber-400 transition-colors whitespace-nowrap flex-shrink-0">
+                      Keep first, mark rest
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {group.map(asset => {
                       const marked = dupesToDelete.has(asset.id)
