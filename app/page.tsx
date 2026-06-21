@@ -19,6 +19,15 @@ type Asset = {
 }
 
 type Folder = { name: string; path: string }
+
+// Canonical supported formats -- keep in sync with app/api/dropbox-sync/route.ts
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'tiff', 'tif']
+const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'm4v', 'webm', 'wmv']
+
+function getExt(name: string): string {
+  const i = name.lastIndexOf('.')
+  return i === -1 ? '' : name.slice(i + 1).toLowerCase()
+}
 type BrowseFile = { name: string; path: string; size: number }
 
 export default function Home() {
@@ -94,7 +103,11 @@ export default function Home() {
     const terms = search.toLowerCase().split(' ').filter(Boolean)
     const results = assets.filter(a => {
       if (typeFilter === 'no-thumbnail') return !a.thumbnail_url
-      if (typeFilter !== 'all' && a.type !== typeFilter) return false
+      if (typeFilter.startsWith('ext:')) {
+        if (getExt(a.name) !== typeFilter.slice(4)) return false
+      } else if (typeFilter !== 'all' && a.type !== typeFilter) {
+        return false
+      }
       if (!terms.length) return true
       const hay = [...(a.tags || []), a.name, a.description].join(' ').toLowerCase()
       return terms.every(t => hay.includes(t))
@@ -698,22 +711,49 @@ export default function Home() {
           <div className="relative">
             <button onClick={() => { setShowTypeDropdown(v => !v); setShowSortDropdown(false) }}
               className="px-4 py-1.5 rounded-full text-xs border border-neutral-700 text-white hover:border-neutral-500 transition-colors flex items-center gap-1.5">
-              {typeFilter === 'all' ? 'All types' : typeFilter === 'image' ? 'Images' : typeFilter === 'video' ? 'Video' : 'No thumbnail'}
+              {typeFilter === 'all' ? 'All types'
+                : typeFilter === 'image' ? 'Images'
+                : typeFilter === 'video' ? 'Video'
+                : typeFilter === 'no-thumbnail' ? 'No thumbnail'
+                : typeFilter.startsWith('ext:') ? typeFilter.slice(4).toUpperCase()
+                : 'All types'}
               <span className="text-white text-[10px]">▾</span>
             </button>
             {showTypeDropdown && (
-              <div className="absolute top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 min-w-[140px]">
-                {['all','image','video'].map(f => (
-                  <button key={f} onClick={() => { setTypeFilter(f); setShowTypeDropdown(false) }}
-                    className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === f ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
-                    {f === 'all' ? 'All types' : f === 'image' ? 'Images' : 'Video'}
+              <div className="absolute top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 min-w-[160px] max-h-[70vh] overflow-y-auto">
+                <button onClick={() => { setTypeFilter('all'); setShowTypeDropdown(false) }}
+                  className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === 'all' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
+                  All types
+                </button>
+                <button onClick={() => { setTypeFilter('image'); setShowTypeDropdown(false) }}
+                  className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === 'image' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
+                  All images
+                </button>
+                {IMAGE_EXTENSIONS.map(ext => (
+                  <button key={ext} onClick={() => { setTypeFilter('ext:' + ext); setShowTypeDropdown(false) }}
+                    className={`block w-full text-left pl-7 pr-4 py-1.5 text-xs transition-colors ${typeFilter === 'ext:' + ext ? 'bg-amber-600 text-black font-medium' : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'}`}>
+                    {ext.toUpperCase()}
+                  </button>
+                ))}
+                <div className="border-t border-neutral-800 my-1" />
+                <button onClick={() => { setTypeFilter('video'); setShowTypeDropdown(false) }}
+                  className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === 'video' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
+                  All video
+                </button>
+                {VIDEO_EXTENSIONS.map(ext => (
+                  <button key={ext} onClick={() => { setTypeFilter('ext:' + ext); setShowTypeDropdown(false) }}
+                    className={`block w-full text-left pl-7 pr-4 py-1.5 text-xs transition-colors ${typeFilter === 'ext:' + ext ? 'bg-amber-600 text-black font-medium' : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'}`}>
+                    {ext.toUpperCase()}
                   </button>
                 ))}
                 {missingThumbCount > 0 && (
-                  <button onClick={() => { setTypeFilter('no-thumbnail'); setShowTypeDropdown(false) }}
-                    className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === 'no-thumbnail' ? 'bg-red-700 text-white font-medium' : 'text-red-500 hover:bg-neutral-800'}`}>
-                    No thumbnail ({missingThumbCount})
-                  </button>
+                  <>
+                    <div className="border-t border-neutral-800 my-1" />
+                    <button onClick={() => { setTypeFilter('no-thumbnail'); setShowTypeDropdown(false) }}
+                      className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === 'no-thumbnail' ? 'bg-red-700 text-white font-medium' : 'text-red-500 hover:bg-neutral-800'}`}>
+                      No thumbnail ({missingThumbCount})
+                    </button>
+                  </>
                 )}
               </div>
             )}
