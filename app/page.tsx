@@ -15,6 +15,7 @@ type Asset = {
   analyzed: boolean
   created_at: string
   file_size: number | null
+  file_date: string | null
 }
 
 type Folder = { name: string; path: string }
@@ -25,6 +26,7 @@ export default function Home() {
   const [filtered, setFiltered] = useState<Asset[]>([])
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc'>('date_desc')
   const [selected, setSelected] = useState<Asset | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -93,8 +95,13 @@ export default function Home() {
       const hay = [...(a.tags || []), a.name, a.description].join(' ').toLowerCase()
       return terms.every(t => hay.includes(t))
     })
-    setFiltered(results)
-  }, [search, typeFilter, assets])
+    const sorted = [...results].sort((a, b) => {
+      const dateA = new Date(a.file_date || a.created_at).getTime()
+      const dateB = new Date(b.file_date || b.created_at).getTime()
+      return sortBy === 'date_desc' ? dateB - dateA : dateA - dateB
+    })
+    setFiltered(sorted)
+  }, [search, typeFilter, sortBy, assets])
 
   async function browseTo(path: string) {
     setBrowserLoading(true)
@@ -688,6 +695,11 @@ export default function Home() {
               No thumbnail ({missingThumbCount})
             </button>
           )}
+          <button onClick={() => setSortBy(prev => prev === 'date_desc' ? 'date_asc' : 'date_desc')}
+            className="px-3 py-1.5 rounded-full text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors whitespace-nowrap flex items-center gap-1">
+            {sortBy === 'date_desc' ? 'Newest first' : 'Oldest first'}
+            <span className="text-neutral-600">{sortBy === 'date_desc' ? '\u2193' : '\u2191'}</span>
+          </button>
           <span className="text-xs text-neutral-600">{filtered.length} results</span>
           <div className="ml-auto flex gap-2">
             {selectMode && (
