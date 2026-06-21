@@ -26,7 +26,11 @@ export default function Home() {
   const [filtered, setFiltered] = useState<Asset[]>([])
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
-  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc'>('date_desc')
+  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'date_range'>('date_desc')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false)
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [selected, setSelected] = useState<Asset | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -95,13 +99,21 @@ export default function Home() {
       const hay = [...(a.tags || []), a.name, a.description].join(' ').toLowerCase()
       return terms.every(t => hay.includes(t))
     })
-    const sorted = [...results].sort((a, b) => {
+    const dateFiltered = sortBy === 'date_range' && (dateFrom || dateTo)
+      ? results.filter(a => {
+          const d = new Date(a.file_date || a.created_at).getTime()
+          if (dateFrom && d < new Date(dateFrom).getTime()) return false
+          if (dateTo && d > new Date(dateTo).getTime() + 86400000) return false
+          return true
+        })
+      : results
+    const sorted = [...dateFiltered].sort((a, b) => {
       const dateA = new Date(a.file_date || a.created_at).getTime()
       const dateB = new Date(b.file_date || b.created_at).getTime()
-      return sortBy === 'date_desc' ? dateB - dateA : dateA - dateB
+      return sortBy === 'date_asc' ? dateA - dateB : dateB - dateA
     })
     setFiltered(sorted)
-  }, [search, typeFilter, sortBy, assets])
+  }, [search, typeFilter, sortBy, dateFrom, dateTo, assets])
 
   async function browseTo(path: string) {
     setBrowserLoading(true)
@@ -670,10 +682,10 @@ export default function Home() {
           onClick={() => document.getElementById('fileInput')?.click()}
           onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
           onDrop={e => { e.preventDefault(); e.stopPropagation(); handleUpload(e.dataTransfer.files) }}>
-          <input id="fileInput" type="file" multiple accept="image/*,video/*,.heic,.heif,.tiff,.tif,.webm,.wmv,.pdf" className="hidden"
+          <input id="fileInput" type="file" multiple accept="image/*,video/*,.heic,.heif,.tiff,.tif,.webp,.avi,.mkv,.m4v,.webm,.wmv" className="hidden"
             onChange={e => handleUpload(e.target.files)} />
-          <p className="text-neutral-400 text-sm">{uploading ? 'Uploading and analyzing...' : 'Drop images or videos here, or click to browse'}</p>
-          <p className="text-neutral-600 text-xs mt-1">Supports JPG, PNG, HEIC, TIFF, MP4, MOV, WebM, WMV</p>
+          <p className="text-white text-sm">{uploading ? 'Uploading and analyzing...' : 'Drop images or videos here, or click to browse'}</p>
+          <p className="text-neutral-400 text-xs mt-1">Supports JPG, PNG, WEBP, HEIC, HEIF, TIFF, MP4, MOV, AVI, MKV, M4V, WEBM, WMV</p>
         </div>
 
         <div className="flex gap-3 mb-4">
@@ -682,25 +694,74 @@ export default function Home() {
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
-        <div className="flex gap-2 mb-6 items-center">
-          {['all','image','video'].map(f => (
-            <button key={f} onClick={() => setTypeFilter(f)}
-              className={`px-4 py-1.5 rounded-full text-xs border transition-colors ${typeFilter === f ? 'bg-amber-600 border-amber-600 text-black font-medium' : 'border-neutral-700 text-neutral-400 hover:border-neutral-500'}`}>
-              {f === 'all' ? 'All' : f === 'image' ? 'Images' : 'Video'}
+        <div className="flex gap-2 mb-6 items-center relative">
+          <div className="relative">
+            <button onClick={() => { setShowTypeDropdown(v => !v); setShowSortDropdown(false) }}
+              className="px-4 py-1.5 rounded-full text-xs border border-neutral-700 text-white hover:border-neutral-500 transition-colors flex items-center gap-1.5">
+              {typeFilter === 'all' ? 'All types' : typeFilter === 'image' ? 'Images' : typeFilter === 'video' ? 'Video' : 'No thumbnail'}
+              <span className="text-white text-[10px]">▾</span>
             </button>
-          ))}
-          {missingThumbCount > 0 && (
-            <button onClick={() => setTypeFilter('no-thumbnail')}
-              className={`px-4 py-1.5 rounded-full text-xs border transition-colors ${typeFilter === 'no-thumbnail' ? 'bg-red-700 border-red-700 text-white font-medium' : 'border-red-900 text-red-500 hover:border-red-700'}`}>
-              No thumbnail ({missingThumbCount})
+            {showTypeDropdown && (
+              <div className="absolute top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 min-w-[140px]">
+                {['all','image','video'].map(f => (
+                  <button key={f} onClick={() => { setTypeFilter(f); setShowTypeDropdown(false) }}
+                    className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === f ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
+                    {f === 'all' ? 'All types' : f === 'image' ? 'Images' : 'Video'}
+                  </button>
+                ))}
+                {missingThumbCount > 0 && (
+                  <button onClick={() => { setTypeFilter('no-thumbnail'); setShowTypeDropdown(false) }}
+                    className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === 'no-thumbnail' ? 'bg-red-700 text-white font-medium' : 'text-red-500 hover:bg-neutral-800'}`}>
+                    No thumbnail ({missingThumbCount})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button onClick={() => { setShowSortDropdown(v => !v); setShowTypeDropdown(false) }}
+              className="px-4 py-1.5 rounded-full text-xs border border-neutral-700 text-white hover:border-neutral-500 transition-colors flex items-center gap-1.5 whitespace-nowrap">
+              {sortBy === 'date_desc' ? 'Newest first' : sortBy === 'date_asc' ? 'Oldest first' : 'Date range'}
+              <span className="text-white text-[10px]">▾</span>
             </button>
-          )}
-          <button onClick={() => setSortBy(prev => prev === 'date_desc' ? 'date_asc' : 'date_desc')}
-            className="px-3 py-1.5 rounded-full text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors whitespace-nowrap flex items-center gap-1">
-            {sortBy === 'date_desc' ? 'Newest first' : 'Oldest first'}
-            <span className="text-neutral-600">{sortBy === 'date_desc' ? '\u2193' : '\u2191'}</span>
-          </button>
-          <span className="text-xs text-neutral-600">{filtered.length} results</span>
+            {showSortDropdown && (
+              <div className="absolute top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 min-w-[220px] p-1">
+                <button onClick={() => { setSortBy('date_desc'); setShowSortDropdown(false) }}
+                  className={`block w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${sortBy === 'date_desc' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
+                  Newest first
+                </button>
+                <button onClick={() => { setSortBy('date_asc'); setShowSortDropdown(false) }}
+                  className={`block w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${sortBy === 'date_asc' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
+                  Oldest first
+                </button>
+                <div className="border-t border-neutral-800 my-1" />
+                <div className="px-3 py-2">
+                  <p className="text-xs text-white mb-2">Select date range</p>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 text-[11px] text-white">
+                      From
+                      <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setSortBy('date_range') }}
+                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-neutral-500" />
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-white">
+                      To
+                      <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setSortBy('date_range') }}
+                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-neutral-500" />
+                    </label>
+                    {(dateFrom || dateTo) && (
+                      <button onClick={() => { setDateFrom(''); setDateTo(''); setSortBy('date_desc') }}
+                        className="text-[11px] text-amber-500 hover:text-amber-400 transition-colors text-left mt-1">
+                        Clear date range
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <span className="text-xs text-white">{filtered.length} results</span>
           <div className="ml-auto flex gap-2">
             {selectMode && (
               <button onClick={selectAll}
@@ -787,8 +848,8 @@ export default function Home() {
                 </div>
                 <div className="p-2.5 bg-neutral-900">
                   <div className="flex items-center justify-between gap-1 mb-1.5">
-                    <p className="text-xs text-neutral-300 truncate">{asset.name}</p>
-                    {asset.file_size ? <span className="text-[10px] text-neutral-600 whitespace-nowrap flex-shrink-0">{asset.file_size < 1048576 ? Math.round(asset.file_size/1024)+'KB' : (asset.file_size/1048576).toFixed(1)+'MB'}</span> : null}
+                    <p className="text-xs text-white truncate">{asset.name}</p>
+                    {asset.file_size ? <span className="text-xs text-white whitespace-nowrap flex-shrink-0">{asset.file_size < 1048576 ? Math.round(asset.file_size/1024)+'KB' : (asset.file_size/1048576).toFixed(1)+'MB'}</span> : null}
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {(asset.tags || []).slice(0,3).map(tag => (
