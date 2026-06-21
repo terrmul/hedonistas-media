@@ -34,10 +34,14 @@ export default function Home() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [filtered, setFiltered] = useState<Asset[]>([])
   const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState<Set<string>>(new Set(['all']))
+  const [draftTypeFilter, setDraftTypeFilter] = useState<Set<string>>(new Set(['all']))
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'date_range'>('date_desc')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [draftDateFrom, setDraftDateFrom] = useState('')
+  const [draftDateTo, setDraftDateTo] = useState('')
+  const [draftSortBy, setDraftSortBy] = useState<'date_desc' | 'date_asc' | 'date_range'>('date_desc')
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [selected, setSelected] = useState<Asset | null>(null)
@@ -101,12 +105,16 @@ export default function Home() {
 
   useEffect(() => {
     const terms = search.toLowerCase().split(' ').filter(Boolean)
+    const noFilter = typeFilter.size === 0 || typeFilter.has('all')
     const results = assets.filter(a => {
-      if (typeFilter === 'no-thumbnail') return !a.thumbnail_url
-      if (typeFilter.startsWith('ext:')) {
-        if (getExt(a.name) !== typeFilter.slice(4)) return false
-      } else if (typeFilter !== 'all' && a.type !== typeFilter) {
-        return false
+      if (!noFilter) {
+        const matches = Array.from(typeFilter).some(f => {
+          if (f === 'no-thumbnail') return !a.thumbnail_url
+          if (f.startsWith('ext:')) return getExt(a.name) === f.slice(4)
+          if (f === 'image' || f === 'video') return a.type === f
+          return false
+        })
+        if (!matches) return false
       }
       if (!terms.length) return true
       const hay = [...(a.tags || []), a.name, a.description].join(' ').toLowerCase()
@@ -709,70 +717,120 @@ export default function Home() {
 
         <div className="flex gap-2 mb-6 items-center relative">
           <div className="relative">
-            <button onClick={() => { setShowTypeDropdown(v => !v); setShowSortDropdown(false) }}
+            <button onClick={() => {
+                if (!showTypeDropdown) setDraftTypeFilter(new Set(typeFilter))
+                setShowTypeDropdown(v => !v); setShowSortDropdown(false)
+              }}
               className="px-4 py-1.5 rounded-full text-xs border border-neutral-700 text-white hover:border-neutral-500 transition-colors flex items-center gap-1.5">
-              {typeFilter === 'all' ? 'All types'
-                : typeFilter === 'image' ? 'Images'
-                : typeFilter === 'video' ? 'Video'
-                : typeFilter === 'no-thumbnail' ? 'No thumbnail'
-                : typeFilter.startsWith('ext:') ? typeFilter.slice(4).toUpperCase()
-                : 'All types'}
+              {typeFilter.size === 0 || typeFilter.has('all')
+                ? 'All types'
+                : typeFilter.size === 1
+                  ? (() => {
+                      const f = Array.from(typeFilter)[0]
+                      return f === 'image' ? 'Images' : f === 'video' ? 'Video' : f === 'no-thumbnail' ? 'No thumbnail' : f.startsWith('ext:') ? f.slice(4).toUpperCase() : 'All types'
+                    })()
+                  : `${typeFilter.size} types`}
               <span className="text-white text-[10px]">▾</span>
             </button>
             {showTypeDropdown && (
-              <div className="absolute top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 min-w-[160px] max-h-[70vh] overflow-y-auto">
-                <button onClick={() => { setTypeFilter('all'); setShowTypeDropdown(false) }}
-                  className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === 'all' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
-                  All types
-                </button>
-                <button onClick={() => { setTypeFilter('image'); setShowTypeDropdown(false) }}
-                  className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === 'image' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
-                  All images
-                </button>
-                {IMAGE_EXTENSIONS.map(ext => (
-                  <button key={ext} onClick={() => { setTypeFilter('ext:' + ext); setShowTypeDropdown(false) }}
-                    className={`block w-full text-left pl-7 pr-4 py-1.5 text-xs transition-colors ${typeFilter === 'ext:' + ext ? 'bg-amber-600 text-black font-medium' : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'}`}>
-                    {ext.toUpperCase()}
+              <div className="absolute top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 min-w-[180px] max-h-[70vh] flex flex-col">
+                <div className="overflow-y-auto flex-1">
+                  <label className="flex items-center gap-2 px-4 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
+                    <input type="checkbox" checked={draftTypeFilter.has('all')}
+                      onChange={() => setDraftTypeFilter(new Set(['all']))}
+                      className="accent-amber-600" />
+                    All types
+                  </label>
+                  <label className="flex items-center gap-2 px-4 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
+                    <input type="checkbox" checked={draftTypeFilter.has('image')}
+                      onChange={() => setDraftTypeFilter(prev => {
+                        const next = new Set(prev); next.delete('all')
+                        if (next.has('image')) next.delete('image'); else next.add('image')
+                        return next.size === 0 ? new Set(['all']) : next
+                      })}
+                      className="accent-amber-600" />
+                    All images
+                  </label>
+                  {IMAGE_EXTENSIONS.map(ext => (
+                    <label key={ext} className="flex items-center gap-2 pl-9 pr-4 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white cursor-pointer">
+                      <input type="checkbox" checked={draftTypeFilter.has('ext:' + ext)}
+                        onChange={() => setDraftTypeFilter(prev => {
+                          const next = new Set(prev); next.delete('all')
+                          const key = 'ext:' + ext
+                          if (next.has(key)) next.delete(key); else next.add(key)
+                          return next.size === 0 ? new Set(['all']) : next
+                        })}
+                        className="accent-amber-600" />
+                      {ext.toUpperCase()}
+                    </label>
+                  ))}
+                  <div className="border-t border-neutral-800 my-1" />
+                  <label className="flex items-center gap-2 px-4 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
+                    <input type="checkbox" checked={draftTypeFilter.has('video')}
+                      onChange={() => setDraftTypeFilter(prev => {
+                        const next = new Set(prev); next.delete('all')
+                        if (next.has('video')) next.delete('video'); else next.add('video')
+                        return next.size === 0 ? new Set(['all']) : next
+                      })}
+                      className="accent-amber-600" />
+                    All video
+                  </label>
+                  {VIDEO_EXTENSIONS.map(ext => (
+                    <label key={ext} className="flex items-center gap-2 pl-9 pr-4 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white cursor-pointer">
+                      <input type="checkbox" checked={draftTypeFilter.has('ext:' + ext)}
+                        onChange={() => setDraftTypeFilter(prev => {
+                          const next = new Set(prev); next.delete('all')
+                          const key = 'ext:' + ext
+                          if (next.has(key)) next.delete(key); else next.add(key)
+                          return next.size === 0 ? new Set(['all']) : next
+                        })}
+                        className="accent-amber-600" />
+                      {ext.toUpperCase()}
+                    </label>
+                  ))}
+                  {missingThumbCount > 0 && (
+                    <>
+                      <div className="border-t border-neutral-800 my-1" />
+                      <label className="flex items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-neutral-800 cursor-pointer">
+                        <input type="checkbox" checked={draftTypeFilter.has('no-thumbnail')}
+                          onChange={() => setDraftTypeFilter(prev => {
+                            const next = new Set(prev); next.delete('all')
+                            if (next.has('no-thumbnail')) next.delete('no-thumbnail'); else next.add('no-thumbnail')
+                            return next.size === 0 ? new Set(['all']) : next
+                          })}
+                          className="accent-red-600" />
+                        No thumbnail ({missingThumbCount})
+                      </label>
+                    </>
+                  )}
+                </div>
+                <div className="border-t border-neutral-800 p-2">
+                  <button onClick={() => { setTypeFilter(new Set(draftTypeFilter)); setShowTypeDropdown(false) }}
+                    className="w-full px-3 py-1.5 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium transition-colors">
+                    Apply
                   </button>
-                ))}
-                <div className="border-t border-neutral-800 my-1" />
-                <button onClick={() => { setTypeFilter('video'); setShowTypeDropdown(false) }}
-                  className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === 'video' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
-                  All video
-                </button>
-                {VIDEO_EXTENSIONS.map(ext => (
-                  <button key={ext} onClick={() => { setTypeFilter('ext:' + ext); setShowTypeDropdown(false) }}
-                    className={`block w-full text-left pl-7 pr-4 py-1.5 text-xs transition-colors ${typeFilter === 'ext:' + ext ? 'bg-amber-600 text-black font-medium' : 'text-neutral-300 hover:bg-neutral-800 hover:text-white'}`}>
-                    {ext.toUpperCase()}
-                  </button>
-                ))}
-                {missingThumbCount > 0 && (
-                  <>
-                    <div className="border-t border-neutral-800 my-1" />
-                    <button onClick={() => { setTypeFilter('no-thumbnail'); setShowTypeDropdown(false) }}
-                      className={`block w-full text-left px-4 py-2 text-xs transition-colors ${typeFilter === 'no-thumbnail' ? 'bg-red-700 text-white font-medium' : 'text-red-500 hover:bg-neutral-800'}`}>
-                      No thumbnail ({missingThumbCount})
-                    </button>
-                  </>
-                )}
+                </div>
               </div>
             )}
           </div>
 
           <div className="relative">
-            <button onClick={() => { setShowSortDropdown(v => !v); setShowTypeDropdown(false) }}
+            <button onClick={() => {
+                if (!showSortDropdown) { setDraftSortBy(sortBy); setDraftDateFrom(dateFrom); setDraftDateTo(dateTo) }
+                setShowSortDropdown(v => !v); setShowTypeDropdown(false)
+              }}
               className="px-4 py-1.5 rounded-full text-xs border border-neutral-700 text-white hover:border-neutral-500 transition-colors flex items-center gap-1.5 whitespace-nowrap">
               {sortBy === 'date_desc' ? 'Newest first' : sortBy === 'date_asc' ? 'Oldest first' : 'Date range'}
               <span className="text-white text-[10px]">▾</span>
             </button>
             {showSortDropdown && (
               <div className="absolute top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 min-w-[220px] p-1">
-                <button onClick={() => { setSortBy('date_desc'); setShowSortDropdown(false) }}
-                  className={`block w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${sortBy === 'date_desc' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
+                <button onClick={() => setDraftSortBy('date_desc')}
+                  className={`block w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${draftSortBy === 'date_desc' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
                   Newest first
                 </button>
-                <button onClick={() => { setSortBy('date_asc'); setShowSortDropdown(false) }}
-                  className={`block w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${sortBy === 'date_asc' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
+                <button onClick={() => setDraftSortBy('date_asc')}
+                  className={`block w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${draftSortBy === 'date_asc' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
                   Oldest first
                 </button>
                 <div className="border-t border-neutral-800 my-1" />
@@ -781,21 +839,30 @@ export default function Home() {
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center gap-2 text-[11px] text-white">
                       From
-                      <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setSortBy('date_range') }}
+                      <input type="date" value={draftDateFrom} onChange={e => { setDraftDateFrom(e.target.value); setDraftSortBy('date_range') }}
                         className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-neutral-500" />
                     </label>
                     <label className="flex items-center gap-2 text-[11px] text-white">
                       To
-                      <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setSortBy('date_range') }}
+                      <input type="date" value={draftDateTo} onChange={e => { setDraftDateTo(e.target.value); setDraftSortBy('date_range') }}
                         className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-neutral-500" />
                     </label>
-                    {(dateFrom || dateTo) && (
-                      <button onClick={() => { setDateFrom(''); setDateTo(''); setSortBy('date_desc') }}
+                    {(draftDateFrom || draftDateTo) && (
+                      <button onClick={() => { setDraftDateFrom(''); setDraftDateTo(''); setDraftSortBy('date_desc') }}
                         className="text-[11px] text-amber-500 hover:text-amber-400 transition-colors text-left mt-1">
                         Clear date range
                       </button>
                     )}
                   </div>
+                </div>
+                <div className="border-t border-neutral-800 p-2">
+                  <button onClick={() => {
+                      setSortBy(draftSortBy); setDateFrom(draftDateFrom); setDateTo(draftDateTo)
+                      setShowSortDropdown(false)
+                    }}
+                    className="w-full px-3 py-1.5 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium transition-colors">
+                    Apply
+                  </button>
                 </div>
               </div>
             )}
