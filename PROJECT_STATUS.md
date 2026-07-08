@@ -66,3 +66,59 @@
   Team folder, auto-import them in the background via the webhook, then show
   the admin (Terry) a notification next time the page loads: "X new files were
   added from Dropbox" with a review/confirm option.
+
+## TODO -- added this session (tags, permissions, rename, preview)
+
+- Editable tags: currently tags are read-only after AI tagging; add inline
+  edit (add/remove individual tags) on the detail view.
+- Admin-only sync: only terry@hedonistasmezcal.com should see the Choose
+  Folder / sync buttons; other logged-in users should only see drag-and-drop
+  upload (still outstanding from earlier sessions).
+- Rename files + reflect in Dropbox: investigate whether renaming an asset in
+  the library can also rename the actual file in Dropbox via filesMoveV2
+  (Dropbox supports rename-in-place this way; app already has
+  files.content.write scope). Need to update dropbox_path in Supabase to
+  match after a successful rename so future syncs/links don't break.
+- Per-user delete permissions, with Terry as full admin: a user should only
+  be able to delete assets they personally imported/uploaded; Terry retains
+  100% delete access regardless of who uploaded what. Requires an
+  uploaded_by column on assets populated at import/upload time, checked
+  before allowing delete, with an admin bypass for Terry.
+- Full-page preview modal instead of sidebar: replace the current side panel
+  preview with a large centered popup showing the image at a bigger, clearer
+  size. Use the existing thumbnail_url (no full-file download) for the large
+  view. Include all tags, description, and action buttons (download, open in
+  Dropbox, delete, etc.) in the popup.
+
+## Video tagging upgrade (done this session)
+
+- Built multi-frame video analysis: extracts 5 evenly-spaced frames per video
+  via ffmpeg-static + sends all 5 in one Claude Haiku 4.5 call so it can
+  synthesize a single coherent tag set/description across the whole clip
+  (previously only analyzed a single Dropbox-generated thumbnail frame).
+- Switched video tagging specifically to Haiku 4.5 (cheaper than Sonnet,
+  roughly $2.40 vs $7.20 for the full ~995-video library at this volume);
+  image tagging stays on Sonnet 4.6.
+- Ran as a local Node script (not Vercel) because video files are too large
+  for serverless limits -- average 98MB, some up to 2.4GB; downloading and
+  ffmpeg-processing this much data would blow Vercel's memory/timeout limits.
+- Researched managed FFmpeg-as-a-service options (Rendi, RenderIO) for an
+  ongoing solution so future video tagging doesn't require a manual local
+  script run -- see "Ongoing video pipeline" below.
+- Confirmed quality improvement over the single-frame approach: 5-frame
+  analysis catches camera movement (e.g. a steadicam pan) and reads specific
+  brand names off products in-frame, which a single static frame could not.
+
+## Ongoing video pipeline -- decision made, not yet built
+
+Going forward, new videos added via Dropbox sync should NOT be tagged through
+the existing Vercel route (same large-file problem as the backfill). Plan:
+integrate a managed FFmpeg API service (Rendi -- free tier covers 50GB/month
+processing, takes a URL not a file upload, no server to manage) to extract
+frames server-side, then pass those frames to Claude Haiku 4.5 for tagging
+from within the Vercel app. Free tier should comfortably cover
+ongoing/incremental video additions (a trickle, not bulk) without needing the
+local script again. Needs: a Rendi account + API key, a Vercel route that
+calls Rendi with the video's Dropbox URL, polls/receives the extracted
+frames, then runs the same Haiku tagging logic already built in
+app/api/tag-untagged/route.ts.

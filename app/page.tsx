@@ -591,285 +591,175 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white flex">
-      <div className={`flex-1 min-w-0 px-6 py-8 transition-all duration-300 ${selected && !selectMode ? 'mr-80' : ''}`} onClick={() => { if (selected) setSelected(null) }}>
-        <div className="max-w-7xl mx-auto">
+      {/* Fixed left sidebar */}
+      <div className="w-72 flex-shrink-0 h-screen sticky top-0 overflow-y-auto bg-neutral-950 border-r border-neutral-800 flex flex-col">
+        <div className="px-5 py-6 flex flex-col gap-4 flex-1">
 
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <img src="/icon.png" alt="Hedonistas Mezcal" className="w-12 h-12 rounded-xl object-contain" />
+          {/* Logo */}
+          <div className="flex items-center gap-3 mb-2">
+            <img src="/icon.png" alt="Hedonistas Mezcal" className="w-10 h-10 rounded-xl object-contain" />
             <div>
-              <h1 className="text-2xl" style={{fontFamily: 'Pacifico, cursive', color: '#F3E6D1'}}>Hedonistas Mezcal</h1>
-              <p className="text-xs text-neutral-500">Media library</p>
+              <h1 className="text-base font-bold tracking-tight">HEDONISTAS MEZCAL</h1>
+              <p className="text-neutral-500 text-xs">Media library</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            <span className="text-xs text-neutral-600 hidden sm:block">{user?.email}</span>
-            <button onClick={signOut}
-              className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-red-900 hover:text-red-500 transition-colors">
-              Sign out
-            </button>
-            <div className="text-xs text-neutral-500">{assets.length} assets / {taggedCount} tagged</div>
-            {untaggedCount > 0 && !tagging && (
-              <button onClick={tagAllUntagged}
-                className="px-3 py-1.5 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors whitespace-nowrap">
-                Tag {untaggedCount} untagged
-              </button>
-            )}
-            {tagging && (
-              <button onClick={stopTagging}
-                className="px-3 py-1.5 rounded-lg text-xs border border-red-900 text-red-500 hover:bg-red-950 transition-colors">
-                Stop tagging
-              </button>
-            )}
-            {missingThumbCount > 0 && (
-              <button onClick={fixBrokenThumbnails} disabled={fixingThumbs}
-                className="px-3 py-1.5 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 disabled:opacity-50 transition-colors whitespace-nowrap">
-                {fixingThumbs
-                  ? `Fixing thumbnails... ${fixThumbsResult?.fixed || 0} fixed`
-                  : `Fix ${missingThumbCount} broken thumbnail${missingThumbCount !== 1 ? 's' : ''}`}
-              </button>
-            )}
-            <button onClick={findDuplicates}
-              className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors whitespace-nowrap">
-              Find duplicates
-            </button>
-            <button onClick={openFolderBrowser}
-              className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors whitespace-nowrap">
-              Choose folder
-            </button>
-    
-          </div>
-        </div>
 
-        {syncPath && (
-          <div className="mb-4 flex items-center gap-2 text-xs text-neutral-500">
-            <span>Syncing from:</span>
-            <span className="text-neutral-300 font-mono bg-neutral-900 px-2 py-1 rounded">{syncPath}</span>
-            <button onClick={() => setSyncPath('')} className="text-neutral-600 hover:text-red-400 transition-colors">✕</button>
-          </div>
-        )}
-
-        {syncing && syncProgress.total > 0 && (
-          <div className="mb-4 p-4 rounded-xl bg-neutral-900 border border-neutral-800">
-            <div className="flex justify-between text-xs text-neutral-400 mb-2">
-              <span>Syncing from Dropbox</span>
-              <span>{syncProgress.processed} of {syncProgress.total} ({Math.round((syncProgress.processed / syncProgress.total) * 100)}%)</span>
-            </div>
-            {syncProgress.current && (
-              <p className="text-[10px] text-neutral-600 truncate mb-2">{syncProgress.current}</p>
-            )}
-            <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600 rounded-full transition-all duration-300"
-                style={{width: `${Math.round((syncProgress.processed / syncProgress.total) * 100)}%`}} />
-            </div>
-          </div>
-        )}
-
-        {tagging && (
-          <div className="mb-4 p-4 rounded-xl bg-neutral-900 border border-neutral-800">
-            <div className="flex justify-between text-xs text-neutral-400 mb-3">
-              <span>Tagging assets with AI</span>
-              <span>{tagProgress.done} of {tagProgress.total} complete ({tagPercent}%)</span>
-            </div>
-            <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
-              <div className="h-full bg-amber-600 rounded-full transition-all duration-500" style={{width: `${tagPercent}%`}} />
-            </div>
-          </div>
-        )}
-
-        {syncResult && (
-          <div className={`mb-4 p-3 rounded-xl text-xs border ${syncResult.error ? 'bg-red-950/50 text-red-400 border-red-900' : 'bg-neutral-900 text-neutral-400 border-neutral-800'}`}>
-            {syncResult.error
-              ? <div className="flex items-center gap-3">
-                  <span>{syncResult.error}</span>
-                  {syncPath && (
-                    <button onClick={() => runSync(syncPath, tagOnSync, true)}
-                      className="px-3 py-1 rounded-lg border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors whitespace-nowrap">
-                      Resume sync
-                    </button>
-                  )}
-                </div>
-              : `Sync complete — ${syncResult.processed} new assets added, ${syncResult.skipped} already imported, ${syncResult.failed} failed`}
-          </div>
-        )}
-
-        {!fixingThumbs && fixThumbsResult && (
-          <div className="mb-4 p-3 rounded-xl text-xs border bg-neutral-900 text-neutral-400 border-neutral-800">
-            Thumbnail repair finished — {fixThumbsResult.fixed} fixed, {fixThumbsResult.failed} could not be generated (likely restricted or unsupported files in Dropbox)
-          </div>
-        )}
-
-        <div className="block border border-dashed border-neutral-700 rounded-xl p-8 text-center cursor-pointer hover:border-amber-600 transition-colors mb-6"
-          onClick={() => document.getElementById('fileInput')?.click()}
-          onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
-          onDrop={e => { e.preventDefault(); e.stopPropagation(); handleUpload(e.dataTransfer.files) }}>
-          <input id="fileInput" type="file" multiple accept="image/*,video/*,.heic,.heif,.tiff,.tif,.webp,.avi,.mkv,.m4v,.webm,.wmv" className="hidden"
-            onChange={e => handleUpload(e.target.files)} />
-          <p className="text-white text-sm">{uploading ? 'Uploading and analyzing...' : 'Drop images or videos here, or click to browse'}</p>
-          <p className="text-neutral-400 text-xs mt-1">Supports JPG, PNG, WEBP, HEIC, HEIF, TIFF, MP4, MOV, AVI, MKV, M4V, WEBM, WMV</p>
-        </div>
-
-        <div className="flex gap-3 mb-4">
-          <input type="text" placeholder="Search by subject — bottle, beach, smoke, agave..."
-            className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600"
+          {/* Search */}
+          <input type="text" placeholder="Search by subject..."
+            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600"
             value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
 
-        <div className="flex gap-2 mb-6 items-center relative">
-          <div className="relative">
-            <button onClick={() => {
-                if (!showTypeDropdown) setDraftTypeFilter(new Set(typeFilter))
-                setShowTypeDropdown(v => !v); setShowSortDropdown(false)
-              }}
-              className="px-4 py-1.5 rounded-full text-xs border border-neutral-700 text-white hover:border-neutral-500 transition-colors flex items-center gap-1.5">
-              {typeFilter.size === 0 || typeFilter.has('all')
-                ? 'All types'
-                : typeFilter.size === 1
-                  ? (() => {
-                      const f = Array.from(typeFilter)[0]
-                      return f === 'image' ? 'Images' : f === 'video' ? 'Video' : f === 'no-thumbnail' ? 'No thumbnail' : f.startsWith('ext:') ? f.slice(4).toUpperCase() : 'All types'
-                    })()
-                  : `${typeFilter.size} types`}
-              <span className="text-white text-[10px]">▾</span>
-            </button>
-            {showTypeDropdown && (
-              <div className="absolute top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 min-w-[180px] max-h-[70vh] flex flex-col">
-                <div className="overflow-y-auto flex-1">
-                  <label className="flex items-center gap-2 px-4 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
-                    <input type="checkbox" checked={draftTypeFilter.has('all')}
-                      onChange={() => setDraftTypeFilter(new Set(['all']))}
-                      className="accent-amber-600" />
-                    All types
-                  </label>
-                  <label className="flex items-center gap-2 px-4 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
-                    <input type="checkbox" checked={draftTypeFilter.has('image')}
-                      onChange={() => setDraftTypeFilter(prev => {
-                        const next = new Set(prev); next.delete('all')
-                        if (next.has('image')) next.delete('image'); else next.add('image')
-                        return next.size === 0 ? new Set(['all']) : next
-                      })}
-                      className="accent-amber-600" />
-                    All images
-                  </label>
-                  {IMAGE_EXTENSIONS.map(ext => (
-                    <label key={ext} className="flex items-center gap-2 pl-9 pr-4 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white cursor-pointer">
-                      <input type="checkbox" checked={draftTypeFilter.has('ext:' + ext)}
-                        onChange={() => setDraftTypeFilter(prev => {
-                          const next = new Set(prev); next.delete('all')
-                          const key = 'ext:' + ext
-                          if (next.has(key)) next.delete(key); else next.add(key)
-                          return next.size === 0 ? new Set(['all']) : next
-                        })}
-                        className="accent-amber-600" />
-                      {ext.toUpperCase()}
-                    </label>
-                  ))}
-                  <div className="border-t border-neutral-800 my-1" />
-                  <label className="flex items-center gap-2 px-4 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
-                    <input type="checkbox" checked={draftTypeFilter.has('video')}
-                      onChange={() => setDraftTypeFilter(prev => {
-                        const next = new Set(prev); next.delete('all')
-                        if (next.has('video')) next.delete('video'); else next.add('video')
-                        return next.size === 0 ? new Set(['all']) : next
-                      })}
-                      className="accent-amber-600" />
-                    All video
-                  </label>
-                  {VIDEO_EXTENSIONS.map(ext => (
-                    <label key={ext} className="flex items-center gap-2 pl-9 pr-4 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white cursor-pointer">
-                      <input type="checkbox" checked={draftTypeFilter.has('ext:' + ext)}
-                        onChange={() => setDraftTypeFilter(prev => {
-                          const next = new Set(prev); next.delete('all')
-                          const key = 'ext:' + ext
-                          if (next.has(key)) next.delete(key); else next.add(key)
-                          return next.size === 0 ? new Set(['all']) : next
-                        })}
-                        className="accent-amber-600" />
-                      {ext.toUpperCase()}
-                    </label>
-                  ))}
-                  {missingThumbCount > 0 && (
-                    <>
-                      <div className="border-t border-neutral-800 my-1" />
-                      <label className="flex items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-neutral-800 cursor-pointer">
-                        <input type="checkbox" checked={draftTypeFilter.has('no-thumbnail')}
-                          onChange={() => setDraftTypeFilter(prev => {
-                            const next = new Set(prev); next.delete('all')
-                            if (next.has('no-thumbnail')) next.delete('no-thumbnail'); else next.add('no-thumbnail')
-                            return next.size === 0 ? new Set(['all']) : next
-                          })}
-                          className="accent-red-600" />
-                        No thumbnail ({missingThumbCount})
-                      </label>
-                    </>
-                  )}
-                </div>
-                <div className="border-t border-neutral-800 p-2">
-                  <button onClick={() => { setTypeFilter(new Set(draftTypeFilter)); setShowTypeDropdown(false) }}
-                    className="w-full px-3 py-1.5 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium transition-colors">
-                    Apply
-                  </button>
-                </div>
-              </div>
-            )}
+          {/* Drop zone */}
+          <div className="block border border-dashed border-neutral-700 rounded-xl p-4 text-center cursor-pointer hover:border-amber-600 transition-colors"
+            onDrop={e => { e.preventDefault(); e.stopPropagation(); handleUpload(e.dataTransfer.files) }}
+            onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+            onClick={() => document.getElementById('fileInput')?.click()}>
+            <input id="fileInput" type="file" multiple accept="image/*,video/*,.heic,.heif,.tiff,.tif,.webp,.avi,.mkv,.m4v,.webm,.wmv" className="hidden"
+              onChange={e => handleUpload(e.target.files)} />
+            <p className="text-white text-xs">{uploading ? 'Uploading...' : 'Drop files or click to browse'}</p>
+            <p className="text-neutral-600 text-[10px] mt-1">JPG PNG WEBP HEIC TIFF MP4 MOV AVI MKV</p>
           </div>
 
-          <div className="relative">
-            <button onClick={() => {
-                if (!showSortDropdown) { setDraftSortBy(sortBy); setDraftDateFrom(dateFrom); setDraftDateTo(dateTo) }
-                setShowSortDropdown(v => !v); setShowTypeDropdown(false)
-              }}
-              className="px-4 py-1.5 rounded-full text-xs border border-neutral-700 text-white hover:border-neutral-500 transition-colors flex items-center gap-1.5 whitespace-nowrap">
-              {sortBy === 'date_desc' ? 'Newest first' : sortBy === 'date_asc' ? 'Oldest first' : 'Date range'}
-              <span className="text-white text-[10px]">▾</span>
-            </button>
-            {showSortDropdown && (
-              <div className="absolute top-full left-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 min-w-[220px] p-1">
-                <button onClick={() => setDraftSortBy('date_desc')}
-                  className={`block w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${draftSortBy === 'date_desc' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
-                  Newest first
-                </button>
-                <button onClick={() => setDraftSortBy('date_asc')}
-                  className={`block w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${draftSortBy === 'date_asc' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>
-                  Oldest first
-                </button>
-                <div className="border-t border-neutral-800 my-1" />
-                <div className="px-3 py-2">
-                  <p className="text-xs text-white mb-2">Select date range</p>
-                  <div className="flex flex-col gap-2">
-                    <label className="flex items-center gap-2 text-[11px] text-white">
-                      From
-                      <input type="date" value={draftDateFrom} onChange={e => { setDraftDateFrom(e.target.value); setDraftSortBy('date_range') }}
-                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-neutral-500" />
+          {/* Type filter */}
+          <div>
+            <p className="text-[10px] text-neutral-500 uppercase tracking-widest mb-1.5">File type</p>
+            <div className="relative">
+              <button onClick={() => { setShowTypeDropdown(v => !v); setShowSortDropdown(false) }}
+                className="w-full px-3 py-2 rounded-lg text-xs border border-neutral-700 text-white hover:border-neutral-500 transition-colors flex items-center justify-between">
+                <span>{typeFilter.size === 0 || typeFilter.has('all') ? 'All types' : typeFilter.size === 1 ? (() => { const f = Array.from(typeFilter)[0]; return f === 'image' ? 'Images' : f === 'video' ? 'Video' : f === 'no-thumbnail' ? 'No thumbnail' : f.startsWith('ext:') ? f.slice(4).toUpperCase() : 'All types' })() : `${typeFilter.size} types selected`}</span>
+                <span className="text-neutral-500 text-[10px]">▾</span>
+              </button>
+              {showTypeDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 max-h-64 flex flex-col">
+                  <div className="overflow-y-auto flex-1">
+                    <label className="flex items-center gap-2 px-3 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
+                      <input type="checkbox" checked={draftTypeFilter.has('all')} onChange={() => setDraftTypeFilter(new Set(['all']))} className="accent-amber-600" />All types
                     </label>
-                    <label className="flex items-center gap-2 text-[11px] text-white">
-                      To
-                      <input type="date" value={draftDateTo} onChange={e => { setDraftDateTo(e.target.value); setDraftSortBy('date_range') }}
-                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-neutral-500" />
+                    <label className="flex items-center gap-2 px-3 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
+                      <input type="checkbox" checked={draftTypeFilter.has('image')} onChange={() => setDraftTypeFilter(prev => { const next = new Set(prev); next.delete('all'); if (next.has('image')) next.delete('image'); else next.add('image'); return next.size === 0 ? new Set(['all']) : next })} className="accent-amber-600" />All images
                     </label>
-                    {(draftDateFrom || draftDateTo) && (
-                      <button onClick={() => { setDraftDateFrom(''); setDraftDateTo(''); setDraftSortBy('date_desc') }}
-                        className="text-[11px] text-amber-500 hover:text-amber-400 transition-colors text-left mt-1">
-                        Clear date range
-                      </button>
-                    )}
+                    {IMAGE_EXTENSIONS.map(ext => (
+                      <label key={ext} className="flex items-center gap-2 pl-8 pr-3 py-1.5 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-white cursor-pointer">
+                        <input type="checkbox" checked={draftTypeFilter.has('ext:' + ext)} onChange={() => setDraftTypeFilter(prev => { const next = new Set(prev); next.delete('all'); const key = 'ext:' + ext; if (next.has(key)) next.delete(key); else next.add(key); return next.size === 0 ? new Set(['all']) : next })} className="accent-amber-600" />{ext.toUpperCase()}
+                      </label>
+                    ))}
+                    <div className="border-t border-neutral-800 my-1" />
+                    <label className="flex items-center gap-2 px-3 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
+                      <input type="checkbox" checked={draftTypeFilter.has('video')} onChange={() => setDraftTypeFilter(prev => { const next = new Set(prev); next.delete('all'); if (next.has('video')) next.delete('video'); else next.add('video'); return next.size === 0 ? new Set(['all']) : next })} className="accent-amber-600" />All video
+                    </label>
+                    {VIDEO_EXTENSIONS.map(ext => (
+                      <label key={ext} className="flex items-center gap-2 pl-8 pr-3 py-1.5 text-xs text-neutral-400 hover:bg-neutral-800 hover:text-white cursor-pointer">
+                        <input type="checkbox" checked={draftTypeFilter.has('ext:' + ext)} onChange={() => setDraftTypeFilter(prev => { const next = new Set(prev); next.delete('all'); const key = 'ext:' + ext; if (next.has(key)) next.delete(key); else next.add(key); return next.size === 0 ? new Set(['all']) : next })} className="accent-amber-600" />{ext.toUpperCase()}
+                      </label>
+                    ))}
+                    {missingThumbCount > 0 && (<>
+                      <div className="border-t border-neutral-800 my-1" />
+                      <label className="flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-neutral-800 cursor-pointer">
+                        <input type="checkbox" checked={draftTypeFilter.has('no-thumbnail')} onChange={() => setDraftTypeFilter(prev => { const next = new Set(prev); next.delete('all'); if (next.has('no-thumbnail')) next.delete('no-thumbnail'); else next.add('no-thumbnail'); return next.size === 0 ? new Set(['all']) : next })} className="accent-red-600" />No thumbnail ({missingThumbCount})
+                      </label>
+                    </>)}
+                  </div>
+                  <div className="border-t border-neutral-800 p-2">
+                    <button onClick={() => { setTypeFilter(new Set(draftTypeFilter)); setShowTypeDropdown(false) }} className="w-full px-3 py-1.5 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium transition-colors">Apply</button>
                   </div>
                 </div>
-                <div className="border-t border-neutral-800 p-2">
-                  <button onClick={() => {
-                      setSortBy(draftSortBy); setDateFrom(draftDateFrom); setDateTo(draftDateTo)
-                      setShowSortDropdown(false)
-                    }}
-                    className="w-full px-3 py-1.5 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium transition-colors">
-                    Apply
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          <span className="text-xs text-white">{filtered.length} results</span>
-          <div className="ml-auto flex gap-2">
+          {/* Sort by date */}
+          <div>
+            <p className="text-[10px] text-neutral-500 uppercase tracking-widest mb-1.5">Sort by date</p>
+            <div className="relative">
+              <button onClick={() => { if (!showSortDropdown) { setDraftSortBy(sortBy); setDraftDateFrom(dateFrom); setDraftDateTo(dateTo) }; setShowSortDropdown(v => !v); setShowTypeDropdown(false) }}
+                className="w-full px-3 py-2 rounded-lg text-xs border border-neutral-700 text-white hover:border-neutral-500 transition-colors flex items-center justify-between">
+                <span>{sortBy === 'date_desc' ? 'Newest first' : sortBy === 'date_asc' ? 'Oldest first' : 'Date range'}</span>
+                <span className="text-neutral-500 text-[10px]">▾</span>
+              </button>
+              {showSortDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 p-1">
+                  <button onClick={() => setDraftSortBy('date_desc')} className={`block w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${draftSortBy === 'date_desc' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>Newest first</button>
+                  <button onClick={() => setDraftSortBy('date_asc')} className={`block w-full text-left px-3 py-2 text-xs rounded-md transition-colors ${draftSortBy === 'date_asc' ? 'bg-amber-600 text-black font-medium' : 'text-white hover:bg-neutral-800'}`}>Oldest first</button>
+                  <div className="border-t border-neutral-800 my-1" />
+                  <div className="px-2 py-1">
+                    <p className="text-[10px] text-neutral-500 mb-2">Date range</p>
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-2 text-[11px] text-white">From<input type="date" value={draftDateFrom} onChange={e => { setDraftDateFrom(e.target.value); setDraftSortBy('date_range') }} className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-[11px] text-white focus:outline-none" /></label>
+                      <label className="flex items-center gap-2 text-[11px] text-white">To<input type="date" value={draftDateTo} onChange={e => { setDraftDateTo(e.target.value); setDraftSortBy('date_range') }} className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-[11px] text-white focus:outline-none" /></label>
+                      {(draftDateFrom || draftDateTo) && <button onClick={() => { setDraftDateFrom(''); setDraftDateTo(''); setDraftSortBy('date_desc') }} className="text-[11px] text-amber-500 text-left">Clear range</button>}
+                    </div>
+                  </div>
+                  <div className="border-t border-neutral-800 p-2 mt-1">
+                    <button onClick={() => { setSortBy(draftSortBy); setDateFrom(draftDateFrom); setDateTo(draftDateTo); setShowSortDropdown(false) }} className="w-full px-3 py-1.5 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium transition-colors">Apply</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <p className="text-xs text-neutral-500">{filtered.length} results</p>
+
+          {/* Sync status */}
+          {syncPath && (
+            <div className="flex items-center gap-2 text-xs text-neutral-500 bg-neutral-900 rounded-lg px-3 py-2">
+              <span className="truncate">{syncPath}</span>
+              <button onClick={() => setSyncPath('')} className="text-neutral-600 hover:text-red-400 flex-shrink-0">✕</button>
+            </div>
+          )}
+          {syncing && syncProgress.total > 0 && (
+            <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800">
+              <div className="flex justify-between text-xs text-neutral-400 mb-2"><span>Syncing...</span><span>{syncProgress.processed} / {syncProgress.total}</span></div>
+              {syncProgress.current && <p className="text-[10px] text-neutral-600 truncate mb-2">{syncProgress.current}</p>}
+              <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden"><div className="h-full bg-blue-600 rounded-full transition-all duration-300" style={{width: `${Math.round((syncProgress.processed / syncProgress.total) * 100)}%`}} /></div>
+            </div>
+          )}
+          {tagging && (
+            <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800">
+              <div className="flex justify-between text-xs text-neutral-400 mb-2"><span>Tagging with AI</span><span>{tagPercent}%</span></div>
+              <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden"><div className="h-full bg-amber-600 rounded-full transition-all duration-500" style={{width: `${tagPercent}%`}} /></div>
+            </div>
+          )}
+          {syncResult && (
+            <div className={`p-3 rounded-xl text-xs border ${syncResult.error ? 'bg-red-950/50 text-red-400 border-red-900' : 'bg-neutral-900 text-neutral-400 border-neutral-800'}`}>
+              {syncResult.error
+                ? <div className="flex flex-col gap-2"><span>{syncResult.error}</span>{syncPath && <button onClick={() => runSync(syncPath, tagOnSync, true)} className="px-2 py-1 rounded border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors text-left">Resume sync</button>}</div>
+                : `Sync complete — ${syncResult.processed} added, ${syncResult.skipped} skipped, ${syncResult.failed} failed`}
+            </div>
+          )}
+          {!fixingThumbs && fixThumbsResult && (
+            <div className="p-3 rounded-xl text-xs border bg-neutral-900 text-neutral-400 border-neutral-800">Thumbnail repair: {fixThumbsResult.fixed} fixed, {fixThumbsResult.failed} failed</div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-2 mt-auto pt-4 border-t border-neutral-800">
+            {untaggedCount > 0 && !tagging && (
+              <button onClick={tagAllUntagged} className="w-full px-3 py-2 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors text-left">Tag {untaggedCount} untagged</button>
+            )}
+            {tagging && (
+              <button onClick={stopTagging} className="w-full px-3 py-2 rounded-lg text-xs border border-red-900 text-red-500 hover:bg-red-950 transition-colors text-left">Stop tagging</button>
+            )}
+            {missingThumbCount > 0 && (
+              <button onClick={fixBrokenThumbnails} disabled={fixingThumbs} className="w-full px-3 py-2 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 disabled:opacity-50 transition-colors text-left">
+                {fixingThumbs ? `Fixing thumbnails... ${fixThumbsResult?.fixed || 0} fixed` : `Fix ${missingThumbCount} broken thumbnails`}
+              </button>
+            )}
+            <button onClick={findDuplicates} className="w-full px-3 py-2 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors text-left">Find duplicates</button>
+            <button onClick={openFolderBrowser} className="w-full px-3 py-2 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors text-left">Choose folder</button>
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-xs text-neutral-500 truncate">{user?.email}</span>
+              <button onClick={signOut} className="ml-auto text-xs text-neutral-600 hover:text-neutral-400 transition-colors flex-shrink-0">Sign out</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Right scrolling content */}
+      <div className={`flex-1 min-w-0 overflow-y-auto h-screen transition-all duration-300 ${selected && !selectMode ? 'mr-80' : ''}`} onClick={() => { if (selected) setSelected(null) }}>
+        <div className="px-6 py-6">
+          <div className="flex gap-2 mb-4 items-center">
+            <span className="text-xs text-neutral-500 mr-auto">{assets.length} assets / {taggedCount} tagged</span>
+
             {selectMode && (
               <button onClick={selectAll}
                 className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors">

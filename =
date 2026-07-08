@@ -1,0 +1,103 @@
+Script started on Sun Jun 21 20:59:53 2026
+command: 
+const {createClient}=require('/Users/MuldoonsMBP/Documents/hedonistas-media/node_modules/@supabase/supabase-js/dist/index.cjs');
+const fs=require('fs');
+const {execFile}=require('child_process');
+const {promisify}=require('util');
+const path=require('path');
+const os=require('os');
+const execFileAsync=promisify(execFile);
+const ffmpegPath='/Users/MuldoonsMBP/Documents/hedonistas-media/node_modules/ffmpeg-static/ffmpeg';
+const env=fs.readFileSync('/Users/MuldoonsMBP/Documents/hedonistas-media/.env.local','utf8');
+const getEnv=k=>env.match(new RegExp(k+'=(.+)'))?.[1]?.trim();
+const supabase=createClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'),getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'));
+
+async function getFreshToken(){
+  const REFRESH=getEnv('DROPBOX_REFRESH_TOKEN');
+  const KEY=getEnv('DROPBOX_APP_KEY');
+  const SECRET=getEnv('DROPBOX_APP_SECRET');
+  const tokenResp=await fetch('https://api.dropbox.com/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'refresh_token',refresh_token:REFRESH,client_id:KEY,client_secret:SECRET})});
+  const data=await tokenResp.json();
+  return data.access_token;
+}
+
+async function main(){
+  const token=await getFreshToken();
+  const dropboxPath='/hdlf team/**marketing assets**/**content**/dsh/hedonistas social shoot 6/1 and 6/2/a032_c023_0603gy.mp4';
+  const tmpVideo=path.join(os.tmpdir(),'debug_test.mp4');
+
+  console.log('Downloading...');
+  const r=await fetch('https://content.dropboxapi.com/2/files/download',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'Dropbox-API-Arg':JSON.stringify({path:dropboxPath})}
+  });
+  console.log('Download status:', r.status);
+  const ab=await r.arrayBuffer();
+  fs.writeFileSync(tmpVideo, Buffer.from(ab));
+  console.log('Downloaded bytes:', fs.statSync(tmpVideo).size);
+
+  console.log('Probing with ffmpeg...');
+  try{
+    await execFileAsync(ffmpegPath,['-i',tmpVideo],{timeout:20000});
+    console.log('Probe succeeded with no stderr (unusual)');
+  }catch(probeErr){
+    console.log('Probe stderr (expected, ffmpeg writes info to stderr):');
+    console.log(probeErr.stderr ? probeErr.stderr.slice(0,800) : 'NO STDERR: ' + probeErr.message);
+  }
+
+  fs.unlinkSync(tmpVideo);
+}
+main().catch(e=>console.error('FATAL:',e));
+
+script: 
+const {createClient}=require('/Users/MuldoonsMBP/Documents/hedonistas-media/node_modules/@supabase/supabase-js/dist/index.cjs');
+const fs=require('fs');
+const {execFile}=require('child_process');
+const {promisify}=require('util');
+const path=require('path');
+const os=require('os');
+const execFileAsync=promisify(execFile);
+const ffmpegPath='/Users/MuldoonsMBP/Documents/hedonistas-media/node_modules/ffmpeg-static/ffmpeg';
+const env=fs.readFileSync('/Users/MuldoonsMBP/Documents/hedonistas-media/.env.local','utf8');
+const getEnv=k=>env.match(new RegExp(k+'=(.+)'))?.[1]?.trim();
+const supabase=createClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'),getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'));
+
+async function getFreshToken(){
+  const REFRESH=getEnv('DROPBOX_REFRESH_TOKEN');
+  const KEY=getEnv('DROPBOX_APP_KEY');
+  const SECRET=getEnv('DROPBOX_APP_SECRET');
+  const tokenResp=await fetch('https://api.dropbox.com/oauth2/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'refresh_token',refresh_token:REFRESH,client_id:KEY,client_secret:SECRET})});
+  const data=await tokenResp.json();
+  return data.access_token;
+}
+
+async function main(){
+  const token=await getFreshToken();
+  const dropboxPath='/hdlf team/**marketing assets**/**content**/dsh/hedonistas social shoot 6/1 and 6/2/a032_c023_0603gy.mp4';
+  const tmpVideo=path.join(os.tmpdir(),'debug_test.mp4');
+
+  console.log('Downloading...');
+  const r=await fetch('https://content.dropboxapi.com/2/files/download',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'Dropbox-API-Arg':JSON.stringify({path:dropboxPath})}
+  });
+  console.log('Download status:', r.status);
+  const ab=await r.arrayBuffer();
+  fs.writeFileSync(tmpVideo, Buffer.from(ab));
+  console.log('Downloaded bytes:', fs.statSync(tmpVideo).size);
+
+  console.log('Probing with ffmpeg...');
+  try{
+    await execFileAsync(ffmpegPath,['-i',tmpVideo],{timeout:20000});
+    console.log('Probe succeeded with no stderr (unusual)');
+  }catch(probeErr){
+    console.log('Probe stderr (expected, ffmpeg writes info to stderr):');
+    console.log(probeErr.stderr ? probeErr.stderr.slice(0,800) : 'NO STDERR: ' + probeErr.message);
+  }
+
+  fs.unlinkSync(tmpVideo);
+}
+main().catch(e=>console.error('FATAL:',e));
+: File name too long
+
+Script done on Sun Jun 21 20:59:53 2026
