@@ -12,6 +12,7 @@ type Permission = {
   can_dedup: boolean
   can_choose_folder: boolean
   can_upload: boolean
+  is_admin: boolean
 }
 
 type User = {
@@ -29,6 +30,7 @@ const DEFAULT_PERMISSIONS: Permission = {
   can_dedup: false,
   can_choose_folder: false,
   can_upload: true,
+  is_admin: false,
 }
 
 const PERMISSION_LABELS: { key: keyof Permission; label: string; description: string }[] = [
@@ -38,6 +40,7 @@ const PERMISSION_LABELS: { key: keyof Permission; label: string; description: st
   { key: 'can_dedup', label: 'Find duplicates', description: 'Access the duplicate finder tool' },
   { key: 'can_choose_folder', label: 'Choose folder / sync', description: 'Sync files from Dropbox folders' },
   { key: 'can_upload', label: 'Upload files', description: 'Drag and drop files into the library' },
+  { key: 'is_admin', label: 'Admin access', description: 'Can manage users and access admin page' },
 ]
 
 export default function AdminPage() {
@@ -52,6 +55,8 @@ export default function AdminPage() {
   const [newPassword, setNewPassword] = useState('')
   const [newPerms, setNewPerms] = useState<Permission>({ ...DEFAULT_PERMISSIONS })
   const [creating, setCreating] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showEditPassword, setShowEditPassword] = useState(false)
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [editPerms, setEditPerms] = useState<Permission>({ ...DEFAULT_PERMISSIONS })
   const [editPassword, setEditPassword] = useState('')
@@ -166,9 +171,15 @@ export default function AdminPage() {
             </div>
             <div>
               <label className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-1.5">Password</label>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                placeholder="Minimum 6 characters"
-                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500" />
+              <div className="relative">
+                <input type={showNewPassword ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 pr-10 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500" />
+                <button type="button" onClick={() => setShowNewPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 text-xs">
+                  {showNewPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
           </div>
           <div className="mb-4">
@@ -250,8 +261,13 @@ export default function AdminPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <input type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)}
-                        placeholder="New password (leave blank to keep current)"
-                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500" />
+                          placeholder="New password (leave blank to keep current)"
+                        type={showEditPassword ? 'text' : 'password'}
+                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 pr-16 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500" />
+                      <button type="button" onClick={() => setShowEditPassword(v => !v)}
+                        className="absolute right-36 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 text-xs">
+                        {showEditPassword ? 'Hide' : 'Show'}
+                      </button>
                       <button onClick={() => saveUser(user.email)} disabled={saving}
                         className="px-4 py-2 rounded-lg text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-black font-medium transition-colors flex-shrink-0">
                         {saving ? 'Saving...' : 'Save'}

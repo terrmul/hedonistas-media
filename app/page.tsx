@@ -73,7 +73,7 @@ export default function Home() {
   const [lightboxPlaying, setLightboxPlaying] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [perms, setPerms] = useState<any>(null)
-  const isAdmin = user?.email === 'terry@hedonistasmezcal.com'
+  const isAdmin = user?.email === 'terry@hedonistasmezcal.com' || perms?.is_admin === true
   const [authLoading, setAuthLoading] = useState(true)
   const router = useRouter()
   const [tagging, setTagging] = useState(false)
@@ -788,10 +788,12 @@ export default function Home() {
                   className="px-3 py-1.5 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                   {tagging ? `Tagging... ${tagProgress.done}/${tagProgress.total}` : `Tag ${assets.filter(a => selectedIds.has(a.id) && !a.analyzed).length} untagged`}
                 </button>
+                {(isAdmin || perms?.can_delete) && (
                 <button onClick={deleteSelected} disabled={deleting}
                   className="px-3 py-1.5 rounded-lg text-xs border border-red-900 text-red-500 hover:bg-red-950 transition-colors">
                   {deleting ? 'Deleting...' : `Delete ${selectedIds.size}`}
                 </button>
+                )}
               </>
             )}
             <button onClick={toggleSelectMode}
