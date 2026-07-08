@@ -556,9 +556,13 @@ export default function Home() {
   }
 
   function toggleSelectMode() {
-    setSelectMode(prev => !prev)
-    setSelectedIds(new Set())
-    setSelected(null)
+    if (selectMode && selectedIds.size > 0) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectMode(prev => !prev)
+      setSelectedIds(new Set())
+      setSelected(null)
+    }
   }
 
   function handleCardClick(asset: Asset) {
@@ -739,11 +743,11 @@ export default function Home() {
             <div className="p-3 rounded-xl text-xs border bg-neutral-900 text-neutral-400 border-neutral-800">Thumbnail repair: {fixThumbsResult.fixed} fixed, {fixThumbsResult.failed} failed</div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex flex-col gap-2 mt-auto pt-4 border-t border-neutral-800">
+          {/* Select mode + bulk actions -- sits below filters */}
+          <div className="flex flex-col gap-2 border-t border-neutral-800 pt-4">
             <button onClick={toggleSelectMode}
               className={`w-full px-3 py-2 rounded-lg text-xs border transition-colors text-left ${selectMode ? 'border-amber-600 text-amber-500 bg-amber-950/30' : 'border-neutral-700 text-neutral-400 hover:border-neutral-500'}`}>
-              {selectMode ? `Selecting — ${selectedIds.size} chosen` : 'Select files'}
+              {selectMode && selectedIds.size > 0 ? 'Deselect all' : selectMode ? 'Cancel selection' : 'Select files'}
             </button>
             {selectMode && selectedIds.size > 0 && (
               <>
@@ -775,6 +779,10 @@ export default function Home() {
                 </button>
               </>
             )}
+          </div>
+
+          {/* Bottom action buttons */}
+          <div className="flex flex-col gap-2 mt-auto pt-4 border-t border-neutral-800">
             {untaggedCount > 0 && !tagging && (
               <button onClick={tagAllUntagged} className="w-full px-3 py-2 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors text-left">Tag {untaggedCount} untagged</button>
             )}
