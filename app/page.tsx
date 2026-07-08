@@ -741,6 +741,40 @@ export default function Home() {
 
           {/* Action buttons */}
           <div className="flex flex-col gap-2 mt-auto pt-4 border-t border-neutral-800">
+            <button onClick={toggleSelectMode}
+              className={`w-full px-3 py-2 rounded-lg text-xs border transition-colors text-left ${selectMode ? 'border-amber-600 text-amber-500 bg-amber-950/30' : 'border-neutral-700 text-neutral-400 hover:border-neutral-500'}`}>
+              {selectMode ? `Selecting — ${selectedIds.size} chosen` : 'Select files'}
+            </button>
+            {selectMode && selectedIds.size > 0 && (
+              <>
+                {(isAdmin || perms?.can_download) && (
+                  <button onClick={async () => {
+                    const sel = assets.filter(a => selectedIds.has(a.id) && a.dropbox_path)
+                    for (const a of sel) {
+                      const link = document.createElement('a')
+                      link.href = `/api/dropbox-download?path=${encodeURIComponent(a.dropbox_path)}&name=${encodeURIComponent(a.name)}`
+                      link.download = a.name
+                      document.body.appendChild(link)
+                      link.click()
+                      document.body.removeChild(link)
+                      await new Promise(r => setTimeout(r, 300))
+                    }
+                  }} className="w-full px-3 py-2 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors text-left">
+                    Download {selectedIds.size} file{selectedIds.size !== 1 ? 's' : ''}
+                  </button>
+                )}
+                {(isAdmin || perms?.can_delete) && (
+                  <button onClick={deleteSelected} disabled={deleting}
+                    className="w-full px-3 py-2 rounded-lg text-xs border border-red-900 text-red-500 hover:bg-red-950 transition-colors text-left">
+                    {deleting ? 'Deleting...' : `Delete ${selectedIds.size} file${selectedIds.size !== 1 ? 's' : ''}`}
+                  </button>
+                )}
+                <button onClick={selectAll}
+                  className="w-full px-3 py-2 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors text-left">
+                  {allSelected ? 'Deselect all' : 'Select all'}
+                </button>
+              </>
+            )}
             {untaggedCount > 0 && !tagging && (
               <button onClick={tagAllUntagged} className="w-full px-3 py-2 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors text-left">Tag {untaggedCount} untagged</button>
             )}
@@ -768,38 +802,19 @@ export default function Home() {
       <div className="flex-1 min-w-0 overflow-y-auto h-screen" onClick={() => { if (selected) setSelected(null) }}>
         <div className="px-6 py-6">
           <div className="flex gap-2 mb-4 items-center">
-            <span className="text-xs text-neutral-500 mr-auto">{assets.length} assets / {taggedCount} tagged</span>
-
-            {selectMode && (
-              <button onClick={selectAll}
-                className="px-3 py-1.5 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors">
-                {allSelected ? 'Deselect all' : 'Select all'}
+            <span className="text-xs text-neutral-500">{assets.length} assets / {taggedCount} tagged</span>
+            {selectMode && selectedIds.size > 0 && (
+              <button onClick={async () => {
+                const toTag = assets.filter(a => selectedIds.has(a.id) && !a.analyzed)
+                if (!toTag.length) return
+                setSelectMode(false)
+                setSelectedIds(new Set())
+                runTagging(toTag)
+              }} disabled={tagging || assets.filter(a => selectedIds.has(a.id) && !a.analyzed).length === 0}
+                className="ml-auto px-3 py-1.5 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                {tagging ? `Tagging... ${tagProgress.done}/${tagProgress.total}` : `Tag ${assets.filter(a => selectedIds.has(a.id) && !a.analyzed).length} untagged`}
               </button>
             )}
-            {selectMode && selectedIds.size > 0 && (
-              <>
-                <button onClick={async () => {
-                  const toTag = assets.filter(a => selectedIds.has(a.id) && !a.analyzed)
-                  if (!toTag.length) return
-                  setSelectMode(false)
-                  setSelectedIds(new Set())
-                  runTagging(toTag)
-                }} disabled={tagging || assets.filter(a => selectedIds.has(a.id) && !a.analyzed).length === 0}
-                  className="px-3 py-1.5 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                  {tagging ? `Tagging... ${tagProgress.done}/${tagProgress.total}` : `Tag ${assets.filter(a => selectedIds.has(a.id) && !a.analyzed).length} untagged`}
-                </button>
-                {(isAdmin || perms?.can_delete) && (
-                <button onClick={deleteSelected} disabled={deleting}
-                  className="px-3 py-1.5 rounded-lg text-xs border border-red-900 text-red-500 hover:bg-red-950 transition-colors">
-                  {deleting ? 'Deleting...' : `Delete ${selectedIds.size}`}
-                </button>
-                )}
-              </>
-            )}
-            <button onClick={toggleSelectMode}
-              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${selectMode ? 'border-amber-600 text-amber-600 hover:bg-amber-950' : 'border-neutral-700 text-neutral-400 hover:border-neutral-500'}`}>
-              {selectMode ? 'Done' : 'Select'}
-            </button>
           </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
