@@ -260,14 +260,15 @@ export default function AdminPage() {
                       ))}
                     </div>
                     <div className="flex items-center gap-3">
-                      <input type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)}
+                      <div className="relative flex-1">
+                        <input type={showEditPassword ? 'text' : 'password'} value={editPassword} onChange={e => setEditPassword(e.target.value)}
                           placeholder="New password (leave blank to keep current)"
-                        type={showEditPassword ? 'text' : 'password'}
-                        className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 pr-16 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500" />
-                      <button type="button" onClick={() => setShowEditPassword(v => !v)}
-                        className="absolute right-36 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 text-xs">
-                        {showEditPassword ? 'Hide' : 'Show'}
-                      </button>
+                          className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 pr-14 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500" />
+                        <button type="button" onClick={() => setShowEditPassword(v => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 text-xs">
+                          {showEditPassword ? 'Hide' : 'Show'}
+                        </button>
+                      </div>
                       <button onClick={() => saveUser(user.email)} disabled={saving}
                         className="px-4 py-2 rounded-lg text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-black font-medium transition-colors flex-shrink-0">
                         {saving ? 'Saving...' : 'Save'}
