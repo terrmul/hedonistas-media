@@ -802,13 +802,11 @@ export default function Home() {
                     ? <div className="relative w-full h-full">
                         <img src={displayUrl} alt={asset.name} className="w-full h-full object-cover" />
                         {asset.type === 'video' && (
-                          <button
-                            onClick={e => { e.stopPropagation(); setVideoPlayer(asset) }}
-                            className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors group/play">
-                            <div className="w-10 h-10 rounded-full bg-black/60 group-hover/play:bg-black/80 flex items-center justify-center transition-colors">
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/10 hover:bg-black/25 transition-colors pointer-events-none">
+                            <div className="w-10 h-10 rounded-full bg-black/60 flex items-center justify-center">
                               <span className="text-white text-sm ml-0.5">▶</span>
                             </div>
-                          </button>
+                          </div>
                         )}
                       </div>
                     : <div className="flex flex-col items-center gap-1">
