@@ -755,7 +755,7 @@ export default function Home() {
       </div>
 
       {/* Right scrolling content */}
-      <div className={`flex-1 min-w-0 overflow-y-auto h-screen transition-all duration-300 ${selected && !selectMode ? 'mr-80' : ''}`} onClick={() => { if (selected) setSelected(null) }}>
+      <div className="flex-1 min-w-0 overflow-y-auto h-screen" onClick={() => { if (selected) setSelected(null) }}>
         <div className="px-6 py-6">
           <div className="flex gap-2 mb-4 items-center">
             <span className="text-xs text-neutral-500 mr-auto">{assets.length} assets / {taggedCount} tagged</span>
@@ -867,41 +867,92 @@ export default function Home() {
       </div>
 
       {selected && !selectMode && (
-        <div className="fixed top-0 right-0 bottom-0 w-80 bg-neutral-900 border-l border-neutral-800 p-6 overflow-y-auto z-10">
-          <button onClick={() => setSelected(null)} className="absolute top-4 right-4 text-neutral-600 hover:text-white text-lg">X</button>
-          {getDisplayUrl(selected) && (
-            <div className="relative mb-4 cursor-pointer" onClick={() => selected.type === 'video' && selected.dropbox_path ? setVideoPlayer(selected) : null}>
-              <img src={getDisplayUrl(selected)} alt={selected.name} className="w-full rounded-lg" />
-              {selected.type === 'video' && (
-                <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/30 hover:bg-black/40 transition-colors">
-                  <div className="w-14 h-14 rounded-full bg-black/70 flex items-center justify-center">
-                    <span className="text-white text-xl ml-1">▶</span>
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelected(null)}>
+          <div className="bg-neutral-900 rounded-2xl border border-neutral-800 w-full max-w-5xl flex overflow-hidden"
+            style={{maxHeight: '90vh'}}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Large image/video on the left */}
+            <div className="flex-1 min-w-0 bg-black flex items-center justify-center relative" style={{minHeight: '60vh'}}>
+              <button onClick={() => setSelected(null)}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-neutral-400 hover:text-white transition-colors z-10">
+                ✕
+              </button>
+              {getDisplayUrl(selected) ? (
+                selected.type === 'video' ? (
+                  <div className="relative w-full h-full flex items-center justify-center cursor-pointer"
+                    onClick={() => selected.dropbox_path && setVideoPlayer(selected)}>
+                    <img src={getDisplayUrl(selected)} alt={selected.name} className="max-w-full max-h-full object-contain" style={{maxHeight: '85vh'}} />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
+                      <div className="w-16 h-16 rounded-full bg-black/70 flex items-center justify-center">
+                        <span className="text-white text-2xl ml-1">▶</span>
+                      </div>
+                    </div>
                   </div>
+                ) : (
+                  <img src={getDisplayUrl(selected)} alt={selected.name}
+                    className="max-w-full max-h-full object-contain"
+                    style={{maxHeight: '85vh'}} />
+                )
+              ) : (
+                <div className="flex flex-col items-center gap-3 text-neutral-600">
+                  <span className="text-5xl">▶</span>
+                  <span className="text-sm">No preview available</span>
                 </div>
               )}
             </div>
-          )}
-          <p className="font-medium text-sm mb-1">{selected.name}</p>
-          <p className="text-xs text-neutral-500 mb-2 capitalize">{selected.type}</p>
-          {selected.dropbox_path && (
-            <div className="flex gap-2 mb-4">
-              <a href={`/api/dropbox-download?path=${encodeURIComponent(selected.dropbox_path)}&name=${encodeURIComponent(selected.name)}`} download={selected.name} className="flex-1 text-center text-xs bg-amber-600 hover:bg-amber-500 text-white py-1.5 rounded-lg transition-colors">Download</a>
-              <a href={selected.url.replace('?raw=1', '?dl=0')} target="_blank" rel="noopener noreferrer" className="flex-1 text-center text-xs border border-neutral-700 hover:border-amber-600 text-neutral-400 hover:text-amber-500 py-1.5 rounded-lg transition-colors">Open in Dropbox</a>
+
+            {/* Metadata panel on the right */}
+            <div className="w-72 flex-shrink-0 border-l border-neutral-800 flex flex-col overflow-y-auto">
+              <div className="p-5 flex-1">
+                <p className="font-medium text-sm mb-0.5 leading-snug">{selected.name}</p>
+                <p className="text-xs text-neutral-500 mb-4 capitalize">{selected.type}{selected.file_size ? ` · ${selected.file_size < 1048576 ? Math.round(selected.file_size/1024)+'KB' : (selected.file_size/1048576).toFixed(1)+'MB'}` : ''}</p>
+
+                {selected.dropbox_path && (
+                  <div className="flex flex-col gap-2 mb-4">
+                    <a href={`/api/dropbox-download?path=${encodeURIComponent(selected.dropbox_path)}&name=${encodeURIComponent(selected.name)}`}
+                      download={selected.name}
+                      className="w-full text-center text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium py-2 rounded-lg transition-colors">
+                      Download
+                    </a>
+                    <a href={selected.url} target="_blank" rel="noopener noreferrer"
+                      className="w-full text-center text-xs border border-neutral-700 hover:border-amber-600 text-neutral-400 hover:text-amber-500 py-2 rounded-lg transition-colors">
+                      Open in Dropbox
+                    </a>
+                  </div>
+                )}
+
+                {selected.description && (
+                  <p className="text-xs text-neutral-400 mb-4 leading-relaxed">{selected.description}</p>
+                )}
+
+                {(selected.tags || []).length > 0 && (
+                  <>
+                    <p className="text-[10px] text-neutral-600 uppercase tracking-wider mb-2">Tags</p>
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {(selected.tags || []).map(tag => (
+                        <span key={tag} className="text-xs px-2 py-1 rounded-lg bg-neutral-800 text-neutral-400">{tag}</span>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {selected.file_date && (
+                  <p className="text-xs text-neutral-600 mb-4">
+                    {new Date(selected.file_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  </p>
+                )}
+              </div>
+
+              <div className="p-5 border-t border-neutral-800">
+                <button onClick={() => { deleteSingle(selected.id); setSelected(null) }}
+                  className="w-full py-2 rounded-lg border border-red-900 text-red-500 hover:bg-red-950 text-xs transition-colors">
+                  Delete asset
+                </button>
+              </div>
             </div>
-          )}
-          {selected.description && (
-            <p className="text-xs text-neutral-400 mb-4 leading-relaxed">{selected.description}</p>
-          )}
-          <p className="text-xs text-neutral-600 uppercase tracking-wider mb-2">Tags</p>
-          <div className="flex flex-wrap gap-1.5 mb-6">
-            {(selected.tags || []).map(tag => (
-              <span key={tag} className="text-xs px-2 py-1 rounded-lg bg-neutral-800 text-neutral-400">{tag}</span>
-            ))}
           </div>
-          <button onClick={() => deleteSingle(selected.id)}
-            className="w-full py-2 rounded-lg border border-red-900 text-red-500 hover:bg-red-950 text-xs transition-colors">
-            Delete asset
-          </button>
         </div>
       )}
 
