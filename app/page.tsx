@@ -933,11 +933,11 @@ export default function Home() {
                   <div className="flex flex-col gap-2 mb-4">
                     <a href={`/api/dropbox-download?path=${encodeURIComponent(selected.dropbox_path)}&name=${encodeURIComponent(selected.name)}`}
                       download={selected.name}
-                      className={`w-full text-center text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium py-2 rounded-lg transition-colors ${!isAdmin && !perms?.can_download ? "hidden" : ""}`}>
+                      className={`w-full text-center text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium py-2 rounded-lg transition-colors ${!isAdmin && perms !== null && !perms?.can_download ? "hidden" : ""}`}>
                       Download
                     </a>
                     <a href={selected.url} target="_blank" rel="noopener noreferrer"
-                      className={`w-full text-center text-xs border border-neutral-700 hover:border-amber-600 text-neutral-400 hover:text-amber-500 py-2 rounded-lg transition-colors ${!isAdmin && !perms?.can_dropbox ? "hidden" : ""}`}>
+                      className={`w-full text-center text-xs border border-neutral-700 hover:border-amber-600 text-neutral-400 hover:text-amber-500 py-2 rounded-lg transition-colors ${!isAdmin && perms !== null && !perms?.can_dropbox ? "hidden" : ""}`}>
                       Open in Dropbox
                     </a>
                   </div>
