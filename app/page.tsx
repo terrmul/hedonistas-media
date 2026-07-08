@@ -70,6 +70,7 @@ export default function Home() {
   const [browserHistory, setBrowserHistory] = useState<string[]>([])
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
   const [videoPlayer, setVideoPlayer] = useState<Asset | null>(null)
+  const [lightboxPlaying, setLightboxPlaying] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const router = useRouter()
@@ -554,7 +555,7 @@ export default function Home() {
 
   function handleCardClick(asset: Asset) {
     if (selectMode) toggleSelect(asset.id)
-    else setSelected(selected?.id === asset.id ? null : asset)
+    else { setSelected(selected?.id === asset.id ? null : asset); setLightboxPlaying(false) }
   }
 
   function getDisplayUrl(asset: Asset) {
@@ -873,26 +874,36 @@ export default function Home() {
 
             {/* Large image/video on the left */}
             <div className="flex-1 min-w-0 bg-black flex items-center justify-center relative" style={{minHeight: '60vh'}}>
-              <button onClick={() => setSelected(null)}
+              <button onClick={() => { setSelected(null); setLightboxPlaying(false) }}
                 className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-neutral-400 hover:text-white transition-colors z-10">
                 ✕
               </button>
-              {getDisplayUrl(selected) ? (
-                selected.type === 'video' ? (
+              {selected.type === 'video' ? (
+                lightboxPlaying && selected.dropbox_path ? (
+                  <video
+                    src={`/api/video-proxy?path=${encodeURIComponent(selected.dropbox_path)}`}
+                    controls autoPlay
+                    className="max-w-full max-h-full rounded-lg"
+                    style={{maxHeight: '85vh'}}>
+                    Your browser does not support video playback.
+                  </video>
+                ) : (
                   <div className="relative w-full h-full flex items-center justify-center cursor-pointer"
-                    onClick={() => selected.dropbox_path && setVideoPlayer(selected)}>
-                    <img src={getDisplayUrl(selected)} alt={selected.name} className="max-w-full max-h-full object-contain" style={{maxHeight: '85vh'}} />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
-                      <div className="w-16 h-16 rounded-full bg-black/70 flex items-center justify-center">
-                        <span className="text-white text-2xl ml-1">▶</span>
+                    onClick={e => { e.stopPropagation(); setLightboxPlaying(true) }}>
+                    {getDisplayUrl(selected)
+                      ? <img src={getDisplayUrl(selected)} alt={selected.name} className="max-w-full max-h-full object-contain" style={{maxHeight: '85vh'}} />
+                      : <div className="w-24 h-24 rounded-full bg-neutral-800 flex items-center justify-center"><span className="text-neutral-500 text-4xl">▶</span></div>}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/40 transition-colors">
+                      <div className="w-20 h-20 rounded-full bg-black/70 hover:bg-black/90 flex items-center justify-center transition-colors">
+                        <span className="text-white text-3xl ml-1">▶</span>
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <img src={getDisplayUrl(selected)} alt={selected.name}
-                    className="max-w-full max-h-full object-contain"
-                    style={{maxHeight: '85vh'}} />
                 )
+              ) : getDisplayUrl(selected) ? (
+                <img src={getDisplayUrl(selected)} alt={selected.name}
+                  className="max-w-full max-h-full object-contain"
+                  style={{maxHeight: '85vh'}} />
               ) : (
                 <div className="flex flex-col items-center gap-3 text-neutral-600">
                   <span className="text-5xl">▶</span>
