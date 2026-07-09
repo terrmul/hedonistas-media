@@ -73,6 +73,7 @@ export default function Home() {
   const [lightboxPlaying, setLightboxPlaying] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [perms, setPerms] = useState<any>(null)
+  const [permsLoaded, setPermsLoaded] = useState(false)
   const isAdmin = user?.email === 'terry@hedonistasmezcal.com' || perms?.is_admin === true
   const [authLoading, setAuthLoading] = useState(true)
   const router = useRouter()
@@ -87,7 +88,7 @@ export default function Home() {
       if (!session) router.push('/login')
       else {
         setUser(session.user)
-        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => setPerms(data))
+        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => { setPerms(data); setPermsLoaded(true) })
       }
       setAuthLoading(false)
     })
@@ -95,7 +96,7 @@ export default function Home() {
       if (!session) router.push('/login')
       else {
         setUser(session.user)
-        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => setPerms(data))
+        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => { setPerms(data); setPermsLoaded(true) })
       }
     })
     return () => subscription.unsubscribe()
@@ -623,7 +624,7 @@ export default function Home() {
             value={search} onChange={e => setSearch(e.target.value)} />
 
           {/* Drop zone */}
-          {(isAdmin || perms === null || perms?.can_upload) && <div className="block border border-dashed border-neutral-700 rounded-xl p-4 text-center cursor-pointer hover:border-amber-600 transition-colors"
+          {(isAdmin || !permsLoaded || perms?.can_upload) && <div className="block border border-dashed border-neutral-700 rounded-xl p-4 text-center cursor-pointer hover:border-amber-600 transition-colors"
             onDrop={e => { e.preventDefault(); e.stopPropagation(); handleUpload(e.dataTransfer.files) }}
             onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
             onClick={() => document.getElementById('fileInput')?.click()}>
@@ -751,7 +752,7 @@ export default function Home() {
             </button>
             {selectMode && selectedIds.size > 0 && (
               <>
-                {(isAdmin || perms === null || perms?.can_download) && (
+                {(isAdmin || !permsLoaded || perms?.can_download) && (
                   <button onClick={async () => {
                     const sel = assets.filter(a => selectedIds.has(a.id) && a.dropbox_path)
                     for (const a of sel) {
@@ -767,7 +768,7 @@ export default function Home() {
                     Download {selectedIds.size} file{selectedIds.size !== 1 ? 's' : ''}
                   </button>
                 )}
-                {(isAdmin || perms === null || perms?.can_delete) && (
+                {(isAdmin || !permsLoaded || perms?.can_delete) && (
                   <button onClick={deleteSelected} disabled={deleting}
                     className="w-full px-3 py-2 rounded-lg text-xs border border-red-900 text-red-500 hover:bg-red-950 transition-colors text-left">
                     {deleting ? 'Deleting...' : `Delete ${selectedIds.size} file${selectedIds.size !== 1 ? 's' : ''}`}
@@ -794,8 +795,8 @@ export default function Home() {
                 {fixingThumbs ? `Fixing thumbnails... ${fixThumbsResult?.fixed || 0} fixed` : `Fix ${missingThumbCount} broken thumbnails`}
               </button>
             )}
-            {(isAdmin || perms === null || perms?.can_dedup) && <button onClick={findDuplicates} className="w-full px-3 py-2 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors text-left">Find duplicates</button>}
-            {(isAdmin || perms === null || perms?.can_choose_folder) && <button onClick={openFolderBrowser} className="w-full px-3 py-2 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors text-left">Choose folder</button>}
+            {(isAdmin || !permsLoaded || perms?.can_dedup) && <button onClick={findDuplicates} className="w-full px-3 py-2 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors text-left">Find duplicates</button>}
+            {(isAdmin || !permsLoaded || perms?.can_choose_folder) && <button onClick={openFolderBrowser} className="w-full px-3 py-2 rounded-lg text-xs border border-neutral-700 text-neutral-400 hover:border-neutral-500 transition-colors text-left">Choose folder</button>}
             <div className="flex items-center gap-2 pt-1">
               <span className="text-xs text-neutral-500 truncate">{user?.email}</span>
               <button onClick={signOut} className="ml-auto text-xs text-neutral-600 hover:text-neutral-400 transition-colors flex-shrink-0">Sign out</button>
@@ -956,11 +957,11 @@ export default function Home() {
                   <div className="flex flex-col gap-2 mb-4">
                     <a href={`/api/dropbox-download?path=${encodeURIComponent(selected.dropbox_path)}&name=${encodeURIComponent(selected.name)}`}
                       download={selected.name}
-                      className={`w-full text-center text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium py-2 rounded-lg transition-colors ${!isAdmin && perms !== null && !perms?.can_download ? "hidden" : ""}`}>
+                      className={`w-full text-center text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium py-2 rounded-lg transition-colors ${!isAdmin && permsLoaded && !perms?.can_download ? "hidden" : ""}`}>
                       Download
                     </a>
                     <a href={selected.url} target="_blank" rel="noopener noreferrer"
-                      className={`w-full text-center text-xs border border-neutral-700 hover:border-amber-600 text-neutral-400 hover:text-amber-500 py-2 rounded-lg transition-colors ${!isAdmin && perms !== null && !perms?.can_dropbox ? "hidden" : ""}`}>
+                      className={`w-full text-center text-xs border border-neutral-700 hover:border-amber-600 text-neutral-400 hover:text-amber-500 py-2 rounded-lg transition-colors ${!isAdmin && permsLoaded && !perms?.can_dropbox ? "hidden" : ""}`}>
                       Open in Dropbox
                     </a>
                   </div>
@@ -989,7 +990,7 @@ export default function Home() {
               </div>
 
               <div className="p-5 border-t border-neutral-800">
-                {(isAdmin || perms === null || perms?.can_delete) && <button onClick={() => { deleteSingle(selected.id); setSelected(null) }}
+                {(isAdmin || !permsLoaded || perms?.can_delete) && <button onClick={() => { deleteSingle(selected.id); setSelected(null) }}
                   className="w-full py-2 rounded-lg border border-red-900 text-red-500 hover:bg-red-950 text-xs transition-colors">
                   Delete asset
                 </button>}
