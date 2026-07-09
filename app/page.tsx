@@ -88,7 +88,7 @@ export default function Home() {
       if (!session) router.push('/login')
       else {
         setUser(session.user)
-        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => { setPerms(data); setPermsLoaded(true) }).catch(() => setPermsLoaded(true))
+        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => { setPerms(data || { can_download: true, can_dropbox: true, can_delete: false, can_dedup: false, can_choose_folder: false, can_upload: true, is_admin: false }); setPermsLoaded(true) }).catch(() => { setPerms({ can_download: true, can_dropbox: true, can_delete: false, can_dedup: false, can_choose_folder: false, can_upload: true, is_admin: false }); setPermsLoaded(true) })
       }
       setAuthLoading(false)
     })
@@ -96,7 +96,7 @@ export default function Home() {
       if (!session) router.push('/login')
       else {
         setUser(session.user)
-        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => { setPerms(data); setPermsLoaded(true) }).catch(() => setPermsLoaded(true))
+        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => { setPerms(data || { can_download: true, can_dropbox: true, can_delete: false, can_dedup: false, can_choose_folder: false, can_upload: true, is_admin: false }); setPermsLoaded(true) }).catch(() => { setPerms({ can_download: true, can_dropbox: true, can_delete: false, can_dedup: false, can_choose_folder: false, can_upload: true, is_admin: false }); setPermsLoaded(true) })
       }
     })
     return () => subscription.unsubscribe()
