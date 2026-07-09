@@ -88,7 +88,7 @@ export default function Home() {
       if (!session) router.push('/login')
       else {
         setUser(session.user)
-        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => { setPerms(data); setPermsLoaded(true) })
+        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => { setPerms(data); setPermsLoaded(true) }).catch(() => setPermsLoaded(true))
       }
       setAuthLoading(false)
     })
@@ -96,7 +96,7 @@ export default function Home() {
       if (!session) router.push('/login')
       else {
         setUser(session.user)
-        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => { setPerms(data); setPermsLoaded(true) })
+        supabase.from('user_permissions').select('*').eq('email', session.user.email).single().then(({ data }) => { setPerms(data); setPermsLoaded(true) }).catch(() => setPermsLoaded(true))
       }
     })
     return () => subscription.unsubscribe()
