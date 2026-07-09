@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server' 
 import { Dropbox } from 'dropbox'
 import { getDropboxToken } from '@/lib/dropbox'
-import { supabase } from '@/lib/supabase'
+import { getServiceSupabase } from '@/lib/supabase'
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.tiff', '.tif']
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.wmv']
@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
   try {
     const { path = '', limit = 100, specificFiles = [], tagOnSync = false, resetCursor = false } = await req.json()
 
+    const supabase = getServiceSupabase()
     const token = await getDropboxToken()
     const dbx = new Dropbox({ accessToken: token, fetch: fetch })
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDropboxToken } from '@/lib/dropbox'
-import { supabase } from '@/lib/supabase'
+import { getServiceSupabase } from '@/lib/supabase'
 
 async function getDropboxThumbnail(token: string, filePath: string): Promise<Buffer | null> {
   try {
@@ -60,6 +60,7 @@ async function uploadThumbnail(thumbnail: Buffer, fileName: string): Promise<str
 export async function POST(req: NextRequest) {
   try {
     const { limit = 30 } = await req.json().catch(() => ({}))
+    const supabase = getServiceSupabase()
     const token = await getDropboxToken()
 
     const { data: assets, error } = await supabase
