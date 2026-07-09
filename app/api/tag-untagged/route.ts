@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Dropbox } from 'dropbox'
 import { getDropboxToken } from '@/lib/dropbox'
 import { getServiceSupabase } from '@/lib/supabase'
-const supabase = getServiceSupabase()
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -83,6 +82,7 @@ async function tagWithClaude(imageBuffer: Buffer, promptText: string): Promise<{
 export async function POST(req: NextRequest) {
   try {
     const { assetId } = await req.json()
+    const supabase = getServiceSupabase()
 
     const { data: asset } = await supabase
       .from('assets')

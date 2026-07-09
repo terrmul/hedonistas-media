@@ -869,7 +869,7 @@ export default function Home() {
                   <div className={`absolute top-2 left-2 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-opacity ${selectMode || isChecked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} ${isChecked ? 'bg-amber-600 border-amber-600' : 'bg-black/60 border-neutral-500'}`}>
                     {isChecked && <span className="text-black text-xs font-bold">✓</span>}
                   </div>
-                  {!selectMode && (
+                  {!selectMode && (isAdmin || !permsLoaded || perms?.can_delete) && (
                     <button onClick={e => { e.stopPropagation(); deleteSingle(asset.id) }}
                       className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/70 text-neutral-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs">
                       X
