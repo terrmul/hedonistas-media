@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     const thumbnail = await sharp(buffer)
       .rotate()
-      .resize(400, 300, { fit: 'cover', position: 'centre' })
+      .resize(640, 640, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 80 })
       .toBuffer()
 
