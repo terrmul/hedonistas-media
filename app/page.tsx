@@ -51,6 +51,7 @@ export default function Home() {
   const [selectMode, setSelectMode] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<any>(null)
+  const [webhookNotification, setWebhookNotification] = useState<{ count: number; timestamp: string } | null>(null)
   const [syncProgress, setSyncProgress] = useState({ processed: 0, total: 0, current: '' })
   const [syncPath, setSyncPath] = useState('')
   const [tagOnSync, setTagOnSync] = useState(true)
@@ -112,6 +113,19 @@ export default function Home() {
   }, [])
 
   useEffect(() => { fetchAssets() }, [fetchAssets])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    supabase.from('sync_state').select('value').eq('key', 'webhook_notification').single()
+      .then(({ data }) => {
+        if (data?.value) {
+          try {
+            const n = JSON.parse(data.value)
+            if (!n.dismissed) setWebhookNotification({ count: n.count, timestamp: n.timestamp })
+          } catch {}
+        }
+      })
+  }, [isAdmin])
 
   useEffect(() => {
     const terms = search.toLowerCase().split(' ').filter(Boolean)
@@ -580,6 +594,14 @@ export default function Home() {
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
   }
 
+  async function dismissWebhookNotification() {
+    setWebhookNotification(null)
+    await supabase.from('sync_state').upsert({
+      key: 'webhook_notification',
+      value: JSON.stringify({ dismissed: true })
+    })
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
     router.push('/login')
@@ -810,6 +832,24 @@ export default function Home() {
       {/* Right scrolling content */}
       <div className="flex-1 min-w-0 overflow-y-auto h-screen" onClick={() => { if (selected) setSelected(null) }}>
         <div className="px-6 py-6">
+
+          {webhookNotification && (
+            <div className="mb-4 p-4 rounded-xl bg-amber-950/40 border border-amber-800 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-amber-400 font-medium">
+                  {webhookNotification.count} new file{webhookNotification.count !== 1 ? 's' : ''} were automatically imported from Dropbox
+                </p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  {new Date(webhookNotification.timestamp).toLocaleString()}
+                </p>
+              </div>
+              <button onClick={dismissWebhookNotification}
+                className="text-amber-600 hover:text-amber-400 text-xs flex-shrink-0 transition-colors">
+                Dismiss
+              </button>
+            </div>
+          )}
+
           <div className="flex gap-2 mb-4 items-center">
             <span className="text-xs text-neutral-500">{assets.length} assets / {taggedCount} tagged</span>
             {selectMode && selectedIds.size > 0 && (
