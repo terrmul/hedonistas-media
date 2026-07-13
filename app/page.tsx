@@ -114,6 +114,23 @@ export default function Home() {
 
   useEffect(() => { fetchAssets() }, [fetchAssets])
 
+  // Poll for new assets and webhook notifications every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      fetchAssets()
+      if (isAdmin) {
+        const { data } = await supabase.from('sync_state').select('value').eq('key', 'webhook_notification').single()
+        if (data?.value) {
+          try {
+            const n = JSON.parse(data.value)
+            if (!n.dismissed) setWebhookNotification({ count: n.count, timestamp: n.timestamp })
+          } catch {}
+        }
+      }
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [fetchAssets, isAdmin])
+
   useEffect(() => {
     if (!isAdmin) return
     supabase.from('sync_state').select('value').eq('key', 'webhook_notification').single()
