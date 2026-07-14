@@ -4,7 +4,7 @@ import { getDropboxToken } from '@/lib/dropbox'
 import { getServiceSupabase } from '@/lib/supabase'
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.tiff', '.tif']
-const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.m4v', '.webm', '.wmv']
+const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.m4v']
 const THUMBNAIL_SUPPORTED = ['.jpg', '.jpeg', '.png', '.webp', '.tiff', '.tif', '.heic', '.heif', '.gif', '.bmp']
 
 function getFileType(name: string): 'image' | 'video' | null {

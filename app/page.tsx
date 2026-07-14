@@ -22,7 +22,7 @@ type Folder = { name: string; path: string }
 
 // Canonical supported formats -- keep in sync with app/api/dropbox-sync/route.ts
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'tiff', 'tif']
-const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'm4v', 'webm', 'wmv']
+const VIDEO_EXTENSIONS = ['mp4', 'mov', 'm4v']
 
 function getExt(name: string): string {
   const i = name.lastIndexOf('.')
@@ -689,10 +689,10 @@ export default function Home() {
             onDrop={e => { e.preventDefault(); e.stopPropagation(); handleUpload(e.dataTransfer.files) }}
             onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
             onClick={() => document.getElementById('fileInput')?.click()}>
-            <input id="fileInput" type="file" multiple accept="image/*,video/*,.heic,.heif,.tiff,.tif,.webp,.avi,.mkv,.m4v,.webm,.wmv" className="hidden"
+            <input id="fileInput" type="file" multiple accept="image/*,.heic,.heif,.tiff,.tif,.webp,.mp4,.mov,.m4v" className="hidden"
               onChange={e => handleUpload(e.target.files)} />
             <p className="text-white text-xs">{uploading ? 'Uploading...' : 'Drop files or click to browse'}</p>
-            <p className="text-neutral-600 text-[10px] mt-1">JPG PNG WEBP HEIC TIFF MP4 MOV AVI MKV</p>
+            <p className="text-neutral-600 text-[10px] mt-1">JPG PNG WEBP HEIC TIFF MP4 MOV M4V</p>
           </div>}
 
           {/* Type filter */}
