@@ -34,7 +34,7 @@ async function getDropboxThumbnail(dbx: Dropbox, filePath: string): Promise<Buff
   }
 }
 
-async function uploadThumbnail(thumbnail: Buffer, fileName: string): Promise<string> {
+async function uploadThumbnail(thumbnail: Buffer, fileName: string, supabase: any): Promise<string> {
   const thumbName = `${Date.now()}_${Math.random().toString(36).slice(2)}_${fileName.replace(/\.[^.]+$/, '')}.jpg`
   const { data: uploadData } = await supabase.storage
     .from('thumbnails')
@@ -67,19 +67,19 @@ async function getDropboxUrl(dbx: Dropbox, filePath: string, fileId?: string): P
 const CURSOR_KEY = 'dropbox_sync_cursor'
 const CURSOR_PATH_KEY = 'dropbox_sync_cursor_path'
 
-async function getSavedCursor(path: string): Promise<string | null> {
+async function getSavedCursor(path: string, supabase: any): Promise<string | null> {
   const { data } = await supabase.from('sync_state').select('value').eq('key', CURSOR_KEY).single()
   const { data: pathData } = await supabase.from('sync_state').select('value').eq('key', CURSOR_PATH_KEY).single()
   if (pathData?.value === path && data?.value) return data.value
   return null
 }
 
-async function saveCursor(cursor: string, path: string): Promise<void> {
+async function saveCursor(cursor: string, path: string, supabase: any): Promise<void> {
   await supabase.from('sync_state').upsert({ key: CURSOR_KEY, value: cursor })
   await supabase.from('sync_state').upsert({ key: CURSOR_PATH_KEY, value: path })
 }
 
-async function clearCursor(): Promise<void> {
+async function clearCursor(supabase: any): Promise<void> {
   await supabase.from('sync_state').delete().eq('key', CURSOR_KEY)
   await supabase.from('sync_state').delete().eq('key', CURSOR_PATH_KEY)
 }
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
                 const fileType = getFileType(file.name)!
                 let thumbnailUrl = ''
                 const thumb = await getDropboxThumbnail(dbx, file.path_lower)
-                if (thumb) thumbnailUrl = await uploadThumbnail(thumb, file.name)
+                if (thumb) thumbnailUrl = await uploadThumbnail(thumb, file.name, supabase)
                 const dropboxUrl = await getDropboxUrl(dbx, file.path_lower, file.id)
                 const { data: inserted } = await supabase.from('assets').insert({
                   name: file.name, type: fileType, url: dropboxUrl,
@@ -153,9 +153,9 @@ export async function POST(req: NextRequest) {
             return
           }
 
-          if (resetCursor) await clearCursor()
+          if (resetCursor) await clearCursor(supabase)
 
-          let cursor = resetCursor ? null : await getSavedCursor(path)
+          let cursor = resetCursor ? null : await getSavedCursor(path, supabase)
           let files: any[] = []
           let hasMore = false
           let newCursor = ''
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
               const fileType = getFileType(file.name)!
               let thumbnailUrl = ''
               const thumb = await getDropboxThumbnail(dbx, file.path_lower)
-              if (thumb) thumbnailUrl = await uploadThumbnail(thumb, file.name)
+              if (thumb) thumbnailUrl = await uploadThumbnail(thumb, file.name, supabase)
               const { data: inserted } = await supabase.from('assets').insert({
                 name: file.name, type: fileType, url: '',
                 thumbnail_url: thumbnailUrl, dropbox_path: file.path_lower,
@@ -219,9 +219,9 @@ export async function POST(req: NextRequest) {
           }
 
           if (newCursor) {
-            await saveCursor(newCursor, path)
+            await saveCursor(newCursor, path, supabase)
           } else {
-            await clearCursor()
+            await clearCursor(supabase)
           }
 
           send({ type: 'complete', processed, failed, skipped, total: mediaFiles.length, grandTotal, hasMore })
