@@ -98,10 +98,45 @@ export async function GET() {
       const ext = (a.name || '').toLowerCase().slice((a.name || '').lastIndexOf('.')) || '(none)'
       byExt[ext] = (byExt[ext] || 0) + 1
     }
+    // Live test on the first missing file: show exactly what Dropbox returns
+    let liveTest: any = null
+    if (assets.length > 0) {
+      const a: any = assets.find((x: any) => x.name.toLowerCase().endsWith('.jpg')) || assets[0]
+      const token = await getDropboxToken()
+      const thumbRes = await fetch('https://content.dropboxapi.com/2/files/get_thumbnail_v2', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Dropbox-API-Arg': httpHeaderSafeJson({
+            resource: { '.tag': 'path', path: a.dropbox_path },
+            format: { '.tag': 'jpeg' },
+            size: { '.tag': 'w640h480' },
+            mode: { '.tag': 'fitone_bestfit' }
+          }),
+          'Content-Type': 'application/octet-stream'
+        }
+      })
+      const thumbBody = thumbRes.ok ? `(ok, ${(await thumbRes.arrayBuffer()).byteLength} bytes)` : (await thumbRes.text()).slice(0, 300)
+      const dlRes = await fetch('https://content.dropboxapi.com/2/files/download', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Dropbox-API-Arg': httpHeaderSafeJson({ path: a.dropbox_path })
+        }
+      })
+      const dlBody = dlRes.ok ? `(ok, ${(await dlRes.arrayBuffer()).byteLength} bytes)` : (await dlRes.text()).slice(0, 300)
+      liveTest = {
+        file: a.dropbox_path,
+        thumbnailApi: { status: thumbRes.status, body: thumbBody },
+        downloadApi: { status: dlRes.status, body: dlBody },
+      }
+    }
+
     return NextResponse.json({
       missingThumbnails: assets.length,
       byExtension: Object.fromEntries(Object.entries(byExt).sort((a, b) => b[1] - a[1])),
-      sample: assets.slice(0, 20).map((a: any) => ({ name: a.name, type: a.type, path: a.dropbox_path })),
+      liveTest,
+      sample: assets.slice(0, 5).map((a: any) => ({ name: a.name, type: a.type, path: a.dropbox_path })),
     })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
