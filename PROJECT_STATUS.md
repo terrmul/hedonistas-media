@@ -26,6 +26,14 @@
 - (nothing — pick from TODO below)
 
 ## Done (earlier sessions)
+- Format filter (2026-07-14): aspect-ratio filter in sidebar (landscape,
+  portrait, square, 16:9, 9:16, 4:3, 3:4; 3% tolerance). Requires width/height
+  columns on assets (SQL below) + /api/backfill-dimensions run until 0.
+  Sync stores dimensions on import via Dropbox media metadata.
+  SQL: ALTER TABLE assets ADD COLUMN width integer, ADD COLUMN height integer;
+- Verified formats (2026-07-14): all 4,816 library files have thumbnails +
+  tags. Proven: jpg jpeg png webp heic tif tiff mp4 mov m4v. Dropped unproven
+  avi/mkv/webm/wmv from accept lists, dropzone label, and sync.
 - Brand color scheme (2026-07-14): light crema theme from brand Pantones,
   implemented entirely as utility-class overrides in app/globals.css (no TSX
   changes). Cream canvas (9185 #EDE1CF), dark olive text (6216), sidebar in

@@ -5,6 +5,7 @@
     "app/api/analyze/route.ts": { "maxDuration": 60 },
     "app/api/thumbnail/route.ts": { "maxDuration": 60 },
     "app/api/tag-untagged/route.ts": { "maxDuration": 120 },
-    "app/api/reconcile-dropbox/route.ts": { "maxDuration": 300 }
+    "app/api/reconcile-dropbox/route.ts": { "maxDuration": 300 },
+    "app/api/backfill-dimensions/route.ts": { "maxDuration": 300 }
   }
 }

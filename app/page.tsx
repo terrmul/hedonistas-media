@@ -16,6 +16,32 @@ type Asset = {
   created_at: string
   file_size: number | null
   file_date: string | null
+  width: number | null
+  height: number | null
+}
+
+// Aspect-ratio format matching (3% tolerance for camera rounding)
+const FORMAT_OPTIONS: { key: string; label: string }[] = [
+  { key: 'landscape', label: 'Landscape' },
+  { key: 'portrait', label: 'Portrait' },
+  { key: 'square', label: 'Square' },
+  { key: '16:9', label: '16:9' },
+  { key: '9:16', label: '9:16' },
+  { key: '4:3', label: '4:3' },
+  { key: '3:4', label: '3:4' },
+]
+function matchesFormat(a: { width: number | null; height: number | null }, key: string): boolean {
+  if (!a.width || !a.height) return false
+  const r = a.width / a.height
+  const near = (target: number) => Math.abs(r - target) / target < 0.03
+  if (key === 'landscape') return r > 1.02
+  if (key === 'portrait') return r < 0.98
+  if (key === 'square') return r >= 0.98 && r <= 1.02
+  if (key === '16:9') return near(16 / 9)
+  if (key === '9:16') return near(9 / 16)
+  if (key === '4:3') return near(4 / 3)
+  if (key === '3:4') return near(3 / 4)
+  return false
 }
 
 type Folder = { name: string; path: string }
@@ -45,6 +71,9 @@ export default function Home() {
   const [draftSortBy, setDraftSortBy] = useState<'date_desc' | 'date_asc' | 'date_range'>('date_desc')
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [showSortDropdown, setShowSortDropdown] = useState(false)
+  const [formatFilter, setFormatFilter] = useState<Set<string>>(new Set(['all']))
+  const [draftFormatFilter, setDraftFormatFilter] = useState<Set<string>>(new Set(['all']))
+  const [showFormatDropdown, setShowFormatDropdown] = useState(false)
   const [selected, setSelected] = useState<Asset | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -162,6 +191,9 @@ export default function Home() {
         })
         if (!matches) return false
       }
+      if (formatFilter.size > 0 && !formatFilter.has('all')) {
+        if (!Array.from(formatFilter).some(f => matchesFormat(a, f))) return false
+      }
       if (!terms.length) return true
       const hay = [...(a.tags || []), a.name, a.description].join(' ').toLowerCase()
       return terms.every(t => hay.includes(t))
@@ -180,7 +212,7 @@ export default function Home() {
       return sortBy === 'date_asc' ? dateA - dateB : dateB - dateA
     })
     setFiltered(sorted)
-  }, [search, typeFilter, sortBy, dateFrom, dateTo, folderFilter, assets])
+  }, [search, typeFilter, formatFilter, sortBy, dateFrom, dateTo, folderFilter, assets])
 
   async function browseTo(path: string) {
     setBrowserLoading(true)
@@ -736,6 +768,35 @@ export default function Home() {
                   </div>
                   <div className="border-t border-neutral-800 p-2">
                     <button onClick={() => { setTypeFilter(new Set(draftTypeFilter)); setShowTypeDropdown(false) }} className="w-full px-3 py-1.5 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium transition-colors">Apply</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Format filter (aspect ratio) */}
+          <div>
+            <p className="text-[10px] text-neutral-500 uppercase tracking-widest mb-1.5">Format</p>
+            <div className="relative">
+              <button onClick={() => { if (!showFormatDropdown) setDraftFormatFilter(new Set(formatFilter)); setShowFormatDropdown(v => !v); setShowTypeDropdown(false); setShowSortDropdown(false) }}
+                className="w-full px-3 py-2 rounded-lg text-xs border border-neutral-700 text-white hover:border-neutral-500 transition-colors flex items-center justify-between">
+                <span>{formatFilter.size === 0 || formatFilter.has('all') ? 'All formats' : formatFilter.size === 1 ? (FORMAT_OPTIONS.find(o => formatFilter.has(o.key))?.label || 'All formats') : `${formatFilter.size} formats selected`}</span>
+                <span className="text-neutral-500 text-[10px]">▾</span>
+              </button>
+              {showFormatDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-700 rounded-lg overflow-hidden z-20 max-h-64 flex flex-col">
+                  <div className="overflow-y-auto flex-1">
+                    <label className="flex items-center gap-2 px-3 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
+                      <input type="checkbox" checked={draftFormatFilter.has('all')} onChange={() => setDraftFormatFilter(new Set(['all']))} className="accent-amber-600" />All formats
+                    </label>
+                    {FORMAT_OPTIONS.map(o => (
+                      <label key={o.key} className="flex items-center gap-2 px-3 py-2 text-xs text-white hover:bg-neutral-800 cursor-pointer">
+                        <input type="checkbox" checked={draftFormatFilter.has(o.key)} onChange={() => setDraftFormatFilter(prev => { const next = new Set(prev); next.delete('all'); if (next.has(o.key)) next.delete(o.key); else next.add(o.key); return next.size === 0 ? new Set(['all']) : next })} className="accent-amber-600" />{o.label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="border-t border-neutral-800 p-2">
+                    <button onClick={() => { setFormatFilter(new Set(draftFormatFilter)); setShowFormatDropdown(false) }} className="w-full px-3 py-1.5 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-black font-medium transition-colors">Apply</button>
                   </div>
                 </div>
               )}

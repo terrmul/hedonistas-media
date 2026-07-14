@@ -226,11 +226,20 @@ export async function POST(req: NextRequest) {
               let thumbnailUrl = ''
               const thumb = await getDropboxThumbnail(dbx, file.path_lower)
               if (thumb) thumbnailUrl = await uploadThumbnail(thumb, file.name, supabase)
+              // Pixel dimensions from Dropbox media metadata (for format filtering)
+              let width: number | null = null
+              let height: number | null = null
+              try {
+                const meta: any = await dbx.filesGetMetadata({ path: file.path_lower, include_media_info: true })
+                const dims = meta.result?.media_info?.metadata?.dimensions
+                if (dims?.width && dims?.height) { width = dims.width; height = dims.height }
+              } catch {}
               const { data: inserted } = await supabase.from('assets').insert({
                 name: file.name, type: fileType, url: '',
                 thumbnail_url: thumbnailUrl, dropbox_path: file.path_lower,
                 tags: [], analyzed: false, file_size: file.size || null,
-                file_date: file.client_modified || file.server_modified || null
+                file_date: file.client_modified || file.server_modified || null,
+                width, height
               }).select('id').single()
               if (tagOnSync && inserted?.id) {
                 fetch(`${origin}/api/tag-untagged`, {
