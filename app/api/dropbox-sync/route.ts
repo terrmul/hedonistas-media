@@ -64,24 +64,21 @@ async function getDropboxUrl(dbx: Dropbox, filePath: string, fileId?: string): P
   }
 }
 
-const CURSOR_KEY = 'dropbox_sync_cursor'
-const CURSOR_PATH_KEY = 'dropbox_sync_cursor_path'
+// Cursor is namespaced per path so the webhook autosync and manual UI syncs
+// (which may target different folders) don't clobber each other's position.
+const cursorKey = (path: string) => `dropbox_sync_cursor::${path.toLowerCase()}`
 
 async function getSavedCursor(path: string, supabase: any): Promise<string | null> {
-  const { data } = await supabase.from('sync_state').select('value').eq('key', CURSOR_KEY).single()
-  const { data: pathData } = await supabase.from('sync_state').select('value').eq('key', CURSOR_PATH_KEY).single()
-  if (pathData?.value === path && data?.value) return data.value
-  return null
+  const { data } = await supabase.from('sync_state').select('value').eq('key', cursorKey(path)).single()
+  return data?.value || null
 }
 
 async function saveCursor(cursor: string, path: string, supabase: any): Promise<void> {
-  await supabase.from('sync_state').upsert({ key: CURSOR_KEY, value: cursor })
-  await supabase.from('sync_state').upsert({ key: CURSOR_PATH_KEY, value: path })
+  await supabase.from('sync_state').upsert({ key: cursorKey(path), value: cursor })
 }
 
-async function clearCursor(supabase: any): Promise<void> {
-  await supabase.from('sync_state').delete().eq('key', CURSOR_KEY)
-  await supabase.from('sync_state').delete().eq('key', CURSOR_PATH_KEY)
+async function clearCursor(path: string, supabase: any): Promise<void> {
+  await supabase.from('sync_state').delete().eq('key', cursorKey(path))
 }
 
 export async function POST(req: NextRequest) {
@@ -155,7 +152,7 @@ export async function POST(req: NextRequest) {
             return
           }
 
-          if (resetCursor) await clearCursor(supabase)
+          if (resetCursor) await clearCursor(path, supabase)
 
           let cursor = resetCursor ? null : await getSavedCursor(path, supabase)
           let files: any[] = []
@@ -252,7 +249,7 @@ export async function POST(req: NextRequest) {
           if (newCursor) {
             await saveCursor(newCursor, path, supabase)
           } else {
-            await clearCursor(supabase)
+            await clearCursor(path, supabase)
           }
 
           send({ type: 'complete', processed, failed, skipped, removed, total: mediaFiles.length, grandTotal, hasMore })

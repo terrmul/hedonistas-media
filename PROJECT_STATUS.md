@@ -42,10 +42,17 @@
   Dropbox deletions (removes assets + thumbnails, folder deletes included);
   webhook uses cursor deltas (resetCursor: false) and reports adds + removals;
   UI banner shows both. Sync base folder: /HDLF Team/**Marketing Assets**
-  (asterisks are literal; NOT the Dropbox root). DROPBOX_SYNC_PATH added to
-  .env.local. REMAINING (manual): set DROPBOX_SYNC_PATH in Vercel, deploy,
-  register https://<production-domain>/api/dropbox-webhook in Dropbox App
-  Console → Settings → Webhooks
+  (asterisks are literal; NOT the Dropbox root). DROPBOX_SYNC_PATH set in
+  .env.local and Vercel; webhook registered in Dropbox App Console.
+  FIXED 2026-07-14 (round 2): webhook was timing out — Dropbox requires a
+  response within 10s but we ran the whole sync first, so Dropbox marked the
+  endpoint failing and backed off ("worked briefly then stopped"). Now the
+  webhook verifies the signature, responds immediately, and runs the sync via
+  Next after(), with a sync_state lock + pending-flag re-run to avoid
+  concurrent syncs. Sync cursors are now namespaced per path
+  (dropbox_sync_cursor::<path>) so manual UI syncs no longer clobber the
+  webhook's cursor. Note: first webhook fire after this deploy does one full
+  scan (cursor key changed); deletions register from the next change onward.
 - **MP4 thumbnails** — video files not pulling thumbnails during sync, needs fix
 - **Drag & drop uploads go to Dropbox** — when a user drops a file, upload it to a specific Dropbox folder (e.g. /HDLF Team/Imported Files) instead of just Supabase storage
 
