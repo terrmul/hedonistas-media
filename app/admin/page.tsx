@@ -73,8 +73,16 @@ export default function AdminPage() {
     })
   }, [])
 
-  async function loadUsers(t: string) {
-    const res = await fetch('/api/admin', { headers: { authorization: `Bearer ${t}` } })
+  // Always fetch a fresh access token at request time — Supabase tokens
+  // expire after ~1 hour, and getSession() auto-refreshes when needed
+  async function freshToken(): Promise<string> {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token || ''
+  }
+
+  async function loadUsers(t?: string) {
+    const auth = t || await freshToken()
+    const res = await fetch('/api/admin', { headers: { authorization: `Bearer ${auth}` } })
     const data = await res.json()
     if (data.users) setUsers(data.users)
   }
@@ -84,7 +92,7 @@ export default function AdminPage() {
     setCreating(true); setError(''); setSuccess('')
     const res = await fetch('/api/admin', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${await freshToken()}` },
       body: JSON.stringify({ email: newEmail, password: newPassword, permissions: newPerms })
     })
     const data = await res.json()
@@ -92,7 +100,7 @@ export default function AdminPage() {
     else {
       setSuccess(`User ${newEmail} created successfully`)
       setNewEmail(''); setNewPassword(''); setNewPerms({ ...DEFAULT_PERMISSIONS })
-      await loadUsers(token)
+      await loadUsers()
     }
     setCreating(false)
   }
@@ -101,7 +109,7 @@ export default function AdminPage() {
     setSaving(true); setError(''); setSuccess('')
     const res = await fetch('/api/admin', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${await freshToken()}` },
       body: JSON.stringify({ email, permissions: editPerms, newPassword: editPassword || undefined })
     })
     const data = await res.json()
@@ -109,7 +117,7 @@ export default function AdminPage() {
     else {
       setSuccess(`User ${email} updated`)
       setEditingUser(null); setEditPassword('')
-      await loadUsers(token)
+      await loadUsers()
     }
     setSaving(false)
   }
@@ -118,12 +126,12 @@ export default function AdminPage() {
     if (!confirm(`Delete user ${email}? This cannot be undone.`)) return
     const res = await fetch('/api/admin', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${await freshToken()}` },
       body: JSON.stringify({ email })
     })
     const data = await res.json()
     if (data.error) setError(data.error)
-    else { setSuccess(`User ${email} deleted`); await loadUsers(token) }
+    else { setSuccess(`User ${email} deleted`); await loadUsers() }
   }
 
   function startEdit(user: User) {
