@@ -34,11 +34,19 @@ export async function POST(req: NextRequest) {
     const beforeCount = await supabase.from('assets').select('id', { count: 'exact', head: true })
     const before = beforeCount.count || 0
 
-    await fetch(`${origin}/api/dropbox-sync`, {
+    const syncRes = await fetch(`${origin}/api/dropbox-sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: syncPath, limit, resetCursor: true, tagOnSync: true }),
     })
+    // Must consume the SSE stream or the sync route exits immediately
+    if (syncRes.body) {
+      const reader = syncRes.body.getReader()
+      while (true) {
+        const { done } = await reader.read()
+        if (done) break
+      }
+    }
 
     const afterCount = await supabase.from('assets').select('id', { count: 'exact', head: true })
     const after = afterCount.count || 0
