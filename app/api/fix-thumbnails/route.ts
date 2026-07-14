@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDropboxToken } from '@/lib/dropbox'
+import { getDropboxToken, httpHeaderSafeJson } from '@/lib/dropbox'
 import { getServiceSupabase } from '@/lib/supabase'
 const supabase = getServiceSupabase()
 
@@ -9,7 +9,7 @@ async function getDropboxThumbnail(token: string, filePath: string): Promise<Buf
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Dropbox-API-Arg': JSON.stringify({
+        'Dropbox-API-Arg': httpHeaderSafeJson({
           resource: { '.tag': 'path', path: filePath },
           format: { '.tag': 'jpeg' },
           size: { '.tag': 'w640h480' },
@@ -33,7 +33,7 @@ async function downloadAndThumb(token: string, filePath: string): Promise<Buffer
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Dropbox-API-Arg': JSON.stringify({ path: filePath })
+        'Dropbox-API-Arg': httpHeaderSafeJson({ path: filePath })
       }
     })
     if (!r.ok) return null

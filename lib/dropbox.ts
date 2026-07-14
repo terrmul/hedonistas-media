@@ -1,6 +1,13 @@
 let cachedToken: string | null = null
 let tokenExpiry: number = 0
 
+// Dropbox-API-Arg is an HTTP header, which can't contain non-ASCII characters
+// (e.g. accented filenames like "matatlán"). Dropbox requires them escaped as \uXXXX.
+export function httpHeaderSafeJson(obj: any): string {
+  return JSON.stringify(obj).replace(/[\u007f-\uffff]/g,
+    c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'))
+}
+
 export async function getDropboxToken(): Promise<string> {
   // If we have a cached token that's still valid, use it
   if (cachedToken && Date.now() < tokenExpiry) {
