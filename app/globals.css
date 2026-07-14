@@ -20,8 +20,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #1a1716;
+    --foreground: #f3e6d1;
   }
 }
 
@@ -30,3 +30,24 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Hedonistas brand theme — warm dark palette matching hedonistasmezcal.com */
+.bg-neutral-950 { background-color: #1a1716 !important; }
+.bg-neutral-900 { background-color: #252220 !important; }
+.bg-neutral-800 { background-color: #332f2c !important; }
+.bg-neutral-700 { background-color: #47423e !important; }
+.border-neutral-800 { border-color: #332f2c !important; }
+.border-neutral-700 { border-color: #47423e !important; }
+.text-white { color: #f3e6d1 !important; }
+.text-neutral-300 { color: #d4c5b2 !important; }
+.text-neutral-400 { color: #a89880 !important; }
+.text-neutral-500 { color: #7a6e64 !important; }
+.text-neutral-600 { color: #5c524a !important; }
+.placeholder-neutral-600::placeholder { color: #5c524a !important; }
+.bg-black { background-color: #0f0d0c !important; }
+.bg-black\/85 { background-color: rgba(15, 13, 12, 0.85) !important; }
+.bg-black\/80 { background-color: rgba(15, 13, 12, 0.8) !important; }
+.bg-black\/60 { background-color: rgba(15, 13, 12, 0.6) !important; }
+.bg-black\/70 { background-color: rgba(15, 13, 12, 0.7) !important; }
+.bg-black\/30 { background-color: rgba(15, 13, 12, 0.3) !important; }
+.bg-black\/20 { background-color: rgba(15, 13, 12, 0.2) !important; }
