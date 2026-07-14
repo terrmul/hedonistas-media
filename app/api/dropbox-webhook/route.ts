@@ -37,36 +37,34 @@ export async function POST(req: NextRequest) {
       ? `https://${req.headers.get('x-forwarded-host')}`
       : req.nextUrl.origin
 
-    ;(async () => {
-      try {
-        const supabase = getServiceSupabase()
-        const beforeCount = await supabase.from('assets').select('id', { count: 'exact', head: true })
-        const before = beforeCount.count || 0
+    try {
+      const supabase = getServiceSupabase()
+      const beforeCount = await supabase.from('assets').select('id', { count: 'exact', head: true })
+      const before = beforeCount.count || 0
 
-        await fetch(`${origin}/api/dropbox-sync`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: syncPath, limit, resetCursor: true }),
-        })
+      await fetch(`${origin}/api/dropbox-sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: syncPath, limit, resetCursor: true }),
+      })
 
-        const afterCount = await supabase.from('assets').select('id', { count: 'exact', head: true })
-        const after = afterCount.count || 0
-        const newFiles = Math.max(0, after - before)
+      const afterCount = await supabase.from('assets').select('id', { count: 'exact', head: true })
+      const after = afterCount.count || 0
+      const newFiles = Math.max(0, after - before)
 
-        if (newFiles > 0) {
-          await supabase.from('sync_state').upsert({
-            key: 'webhook_notification',
-            value: JSON.stringify({
-              count: newFiles,
-              timestamp: new Date().toISOString(),
-              dismissed: false
-            })
+      if (newFiles > 0) {
+        await supabase.from('sync_state').upsert({
+          key: 'webhook_notification',
+          value: JSON.stringify({
+            count: newFiles,
+            timestamp: new Date().toISOString(),
+            dismissed: false
           })
-        }
-      } catch (err) {
-        console.error('Webhook background sync failed:', err)
+        })
       }
-    })()
+    } catch (err) {
+      console.error('Webhook sync failed:', err)
+    }
 
     return NextResponse.json({ ok: true })
   } catch (err) {
