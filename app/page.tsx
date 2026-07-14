@@ -35,6 +35,7 @@ export default function Home() {
   const [filtered, setFiltered] = useState<Asset[]>([])
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<Set<string>>(new Set(['all']))
+  const [folderFilter, setFolderFilter] = useState<string | null>(null)
   const [draftTypeFilter, setDraftTypeFilter] = useState<Set<string>>(new Set(['all']))
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'date_range'>('date_desc')
   const [dateFrom, setDateFrom] = useState('')
@@ -148,6 +149,10 @@ export default function Home() {
     const terms = search.toLowerCase().split(' ').filter(Boolean)
     const noFilter = typeFilter.size === 0 || typeFilter.has('all')
     const results = assets.filter(a => {
+      if (folderFilter && a.dropbox_path) {
+        const folder = a.dropbox_path.substring(0, a.dropbox_path.lastIndexOf('/'))
+        if (folder !== folderFilter) return false
+      }
       if (!noFilter) {
         const matches = Array.from(typeFilter).some(f => {
           if (f === 'no-thumbnail') return !a.thumbnail_url
@@ -175,7 +180,7 @@ export default function Home() {
       return sortBy === 'date_asc' ? dateA - dateB : dateB - dateA
     })
     setFiltered(sorted)
-  }, [search, typeFilter, sortBy, dateFrom, dateTo, assets])
+  }, [search, typeFilter, sortBy, dateFrom, dateTo, folderFilter, assets])
 
   async function browseTo(path: string) {
     setBrowserLoading(true)
@@ -759,6 +764,12 @@ export default function Home() {
           </div>
 
           <p className="text-xs text-neutral-500">{filtered.length} results</p>
+          {folderFilter && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-950/30 border border-amber-800">
+              <p className="text-[10px] text-amber-500 truncate flex-1">{folderFilter.split('/').pop()}</p>
+              <button onClick={() => setFolderFilter(null)} className="text-amber-600 hover:text-amber-400 flex-shrink-0 text-[10px]">Clear</button>
+            </div>
+          )}
 
           {/* Sync status */}
           {syncPath && (
@@ -1051,6 +1062,18 @@ export default function Home() {
                   <p className="text-xs text-neutral-600 mb-4">
                     {new Date(selected.file_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </p>
+                )}
+                {selected.dropbox_path && (
+                  <div className="mb-4">
+                    <p className="text-[10px] text-neutral-600 break-all leading-relaxed mb-1">{selected.dropbox_path}</p>
+                    <button onClick={() => {
+                      const folder = selected.dropbox_path!.substring(0, selected.dropbox_path!.lastIndexOf('/'))
+                      setFolderFilter(folder)
+                      setSelected(null)
+                    }} className="text-[10px] text-amber-500 hover:text-amber-400 transition-colors">
+                      Filter to this folder
+                    </button>
+                  </div>
                 )}
               </div>
 
