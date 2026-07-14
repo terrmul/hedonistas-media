@@ -174,9 +174,11 @@ export default function Home() {
           return true
         })
       : results
+    // Sort by when the asset was added to the library (created_at), not the
+    // file's own creation date — file_date is only used for date-range filtering
     const sorted = [...dateFiltered].sort((a, b) => {
-      const dateA = new Date(a.file_date || a.created_at).getTime()
-      const dateB = new Date(b.file_date || b.created_at).getTime()
+      const dateA = new Date(a.created_at).getTime()
+      const dateB = new Date(b.created_at).getTime()
       return sortBy === 'date_asc' ? dateA - dateB : dateB - dateA
     })
     setFiltered(sorted)
