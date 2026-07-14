@@ -35,7 +35,9 @@ async function getDropboxThumbnail(dbx: Dropbox, filePath: string): Promise<Buff
 }
 
 async function uploadThumbnail(thumbnail: Buffer, fileName: string, supabase: any): Promise<string> {
-  const thumbName = `${Date.now()}_${Math.random().toString(36).slice(2)}_${fileName.replace(/\.[^.]+$/, '')}.jpg`
+  // Storage keys must be ASCII-safe: strip accents/special chars from the name
+  const safeName = fileName.replace(/\.[^.]+$/, '').normalize('NFD').replace(/[^a-zA-Z0-9_-]/g, '_')
+  const thumbName = `${Date.now()}_${Math.random().toString(36).slice(2)}_${safeName}.jpg`
   const { data: uploadData } = await supabase.storage
     .from('thumbnails')
     .upload(thumbName, thumbnail, { contentType: 'image/jpeg' })
