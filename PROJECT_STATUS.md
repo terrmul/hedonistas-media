@@ -41,9 +41,11 @@
 - **Autosync on Dropbox changes** — CODE DONE 2026-07-14: sync route now processes
   Dropbox deletions (removes assets + thumbnails, folder deletes included);
   webhook uses cursor deltas (resetCursor: false) and reports adds + removals;
-  UI banner shows both. REMAINING (manual): set DROPBOX_SYNC_PATH env var in
-  Vercel, deploy, register https://<production-domain>/api/dropbox-webhook in
-  Dropbox App Console → Settings → Webhooks
+  UI banner shows both. Sync base folder: /HDLF Team/**Marketing Assets**
+  (asterisks are literal; NOT the Dropbox root). DROPBOX_SYNC_PATH added to
+  .env.local. REMAINING (manual): set DROPBOX_SYNC_PATH in Vercel, deploy,
+  register https://<production-domain>/api/dropbox-webhook in Dropbox App
+  Console → Settings → Webhooks
 - **MP4 thumbnails** — video files not pulling thumbnails during sync, needs fix
 - **Drag & drop uploads go to Dropbox** — when a user drops a file, upload it to a specific Dropbox folder (e.g. /HDLF Team/Imported Files) instead of just Supabase storage
 
