@@ -26,6 +26,10 @@
 - (nothing — pick from TODO below)
 
 ## Done (earlier sessions)
+- Date sorting (2026-07-14): REVERTED to original behavior at Terry's request
+  — gallery sorts by file_date || created_at in all modes, exactly as before.
+  Do not change this again. /api/backfill-file-dates route exists (unused,
+  harmless) — fills missing file_date from Dropbox EXIF if ever wanted.
 - Dropbox OAuth (permanent token) - DONE, verified 2026-07-14
   - Refresh token in .env.local works (token grant returns 200)
   - All Dropbox routes use getDropboxToken() from lib/dropbox.ts
