@@ -92,9 +92,26 @@ async function countMissingThumbs(): Promise<number> {
   return (c1 || 0) + (c2 || 0)
 }
 
-// Diagnostic: GET /api/fix-thumbnails shows what's still missing, by extension
+// Diagnostic: GET /api/fix-thumbnails shows what's still missing, by extension,
+// plus per-extension coverage stats (total / with thumbnail / tagged)
 export async function GET() {
   try {
+    const { data: all } = await supabase
+      .from('assets')
+      .select('name, thumbnail_url, analyzed')
+      .limit(25000)
+    const coverage: Record<string, { total: number; withThumb: number; tagged: number }> = {}
+    for (const a of all || []) {
+      const ext = (a.name || '').toLowerCase().slice((a.name || '').lastIndexOf('.')) || '(none)'
+      coverage[ext] = coverage[ext] || { total: 0, withThumb: 0, tagged: 0 }
+      coverage[ext].total++
+      if (a.thumbnail_url) coverage[ext].withThumb++
+      if (a.analyzed) coverage[ext].tagged++
+    }
+    const formatCoverage = Object.fromEntries(
+      Object.entries(coverage).sort((a, b) => b[1].total - a[1].total)
+    )
+
     const assets = await getMissingThumbAssets([], 500)
     const byExt: Record<string, number> = {}
     for (const a of assets) {
@@ -136,6 +153,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      formatCoverage,
       missingThumbnails: assets.length,
       byExtension: Object.fromEntries(Object.entries(byExt).sort((a, b) => b[1] - a[1])),
       liveTest,
