@@ -1154,6 +1154,19 @@ export default function Home() {
                       className="text-[10px] text-amber-500 hover:text-amber-400 transition-colors whitespace-nowrap flex-shrink-0">
                       Keep first, mark rest
                     </button>
+                    <button onClick={() => setDupesToDelete(prev => {
+                      const next = new Set(prev)
+                      const withThumb = group.find(a => a.thumbnail_url)
+                      if (withThumb) {
+                        group.filter(a => a.id !== withThumb.id).forEach(a => next.add(a.id))
+                      } else {
+                        group.slice(1).forEach(a => next.add(a.id))
+                      }
+                      return next
+                    })}
+                      className="text-[10px] text-amber-500 hover:text-amber-400 transition-colors whitespace-nowrap flex-shrink-0">
+                      Keep thumbnail, mark rest
+                    </button>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {group.map(asset => {
@@ -1188,10 +1201,27 @@ export default function Home() {
             {duplicateGroups.length > 0 && (
               <div className="px-5 py-4 border-t border-neutral-800 flex items-center justify-between">
                 <span className="text-xs text-neutral-500">{dupesToDelete.size} selected for deletion</span>
-                <button onClick={deleteSelectedDupes} disabled={dupesToDelete.size === 0 || deletingDupes}
-                  className="px-4 py-2 rounded-lg text-xs bg-red-900 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors">
-                  {deletingDupes ? 'Deleting...' : `Delete ${dupesToDelete.size} file${dupesToDelete.size !== 1 ? 's' : ''}`}
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setDupesToDelete(() => {
+                    const next = new Set<string>()
+                    duplicateGroups.forEach(group => {
+                      const withThumb = group.find(a => a.thumbnail_url)
+                      if (withThumb) {
+                        group.filter(a => a.id !== withThumb.id).forEach(a => next.add(a.id))
+                      } else {
+                        group.slice(1).forEach(a => next.add(a.id))
+                      }
+                    })
+                    return next
+                  })}
+                    className="px-3 py-1.5 rounded-lg text-xs border border-amber-800 text-amber-500 hover:bg-amber-950 transition-colors whitespace-nowrap">
+                    Keep thumbnails in all groups
+                  </button>
+                  <button onClick={deleteSelectedDupes} disabled={dupesToDelete.size === 0 || deletingDupes}
+                    className="px-4 py-2 rounded-lg text-xs bg-red-900 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors">
+                    {deletingDupes ? 'Deleting...' : `Delete ${dupesToDelete.size} file${dupesToDelete.size !== 1 ? 's' : ''}`}
+                  </button>
+                </div>
               </div>
             )}
           </div>
