@@ -18,47 +18,35 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #1a1716;
-    --foreground: #f3e6d1;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Hedonistas brand theme — warm dark palette matching hedonistasmezcal.com */
-.bg-neutral-950 { background-color: #1a1716 !important; }
-.bg-neutral-900 { background-color: #252220 !important; }
-.bg-neutral-800 { background-color: #332f2c !important; }
-.bg-neutral-700 { background-color: #47423e !important; }
-.border-neutral-800 { border-color: #332f2c !important; }
-.border-neutral-700 { border-color: #47423e !important; }
-.text-white { color: #f3e6d1 !important; }
-.text-neutral-300 { color: #d4c5b2 !important; }
-.text-neutral-400 { color: #a89880 !important; }
-.text-neutral-500 { color: #7a6e64 !important; }
-.text-neutral-600 { color: #5c524a !important; }
-.placeholder-neutral-600::placeholder { color: #5c524a !important; }
-.bg-black { background-color: #0f0d0c !important; }
-.bg-black\/85 { background-color: rgba(15, 13, 12, 0.85) !important; }
-.bg-black\/80 { background-color: rgba(15, 13, 12, 0.8) !important; }
-.bg-black\/60 { background-color: rgba(15, 13, 12, 0.6) !important; }
-.bg-black\/70 { background-color: rgba(15, 13, 12, 0.7) !important; }
-.bg-black\/30 { background-color: rgba(15, 13, 12, 0.3) !important; }
-.bg-black\/20 { background-color: rgba(15, 13, 12, 0.2) !important; }
+/* Hedonistas warm palette — high contrast */
+.bg-neutral-950 { background-color: #1a1614 !important; }
+.bg-neutral-900 { background-color: #2a2522 !important; }
+.bg-neutral-800 { background-color: #3d3730 !important; }
+.bg-neutral-700 { background-color: #524a42 !important; }
+.border-neutral-800 { border-color: #3d3730 !important; }
+.border-neutral-700 { border-color: #524a42 !important; }
+.border-neutral-900 { border-color: #2a2522 !important; }
 
-/* Left sidebar slightly lighter than main content */
-.border-r.border-neutral-800 {
-  background-color: #201d1b !important;
-}
+/* Text — bright cream for good contrast */
+.text-white { color: #f5ead8 !important; }
+.text-neutral-300 { color: #e8d8c0 !important; }
+.text-neutral-400 { color: #c8b090 !important; }
+.text-neutral-500 { color: #a08868 !important; }
+.text-neutral-600 { color: #786050 !important; }
+.placeholder-neutral-600::placeholder { color: #786050 !important; }
 
-/* High contrast text overrides */
-.text-neutral-400 { color: #c4b49c !important; }
-.text-neutral-500 { color: #a08870 !important; }
-.text-neutral-600 { color: #7a6a58 !important; }
-.text-neutral-300 { color: #e0d0bc !important; }
+/* Black overlays (lightbox, video) */
+.bg-black { background-color: #0f0d0b !important; }
+.bg-black\/85 { background-color: rgba(15, 13, 11, 0.85) !important; }
+.bg-black\/80 { background-color: rgba(15, 13, 11, 0.80) !important; }
+.bg-black\/70 { background-color: rgba(15, 13, 11, 0.70) !important; }
+.bg-black\/60 { background-color: rgba(15, 13, 11, 0.60) !important; }
+.bg-black\/30 { background-color: rgba(15, 13, 11, 0.30) !important; }
+.bg-black\/20 { background-color: rgba(15, 13, 11, 0.20) !important; }
+
+/* Left sidebar slightly lighter */
+.sticky.top-0.overflow-y-auto { background-color: #221f1c !important; }
