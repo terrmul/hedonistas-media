@@ -29,6 +29,12 @@
 - Reconcile route (2026-07-14): /api/reconcile-dropbox removes DB assets whose
   files no longer exist in Dropbox (pre-webhook drift). Dry run by default;
   ?confirm=true deletes rows + thumbnails. Scoped to DROPBOX_SYNC_PATH only.
+  RUN: removed 1643 orphans.
+- Prune route (2026-07-14): /api/prune-outside-folder removes library entries
+  under /hdlf team/ but outside DROPBOX_SYNC_PATH (Dropbox files untouched).
+  Dry run by default. RUN: removed 1252 entries (incl. financial/HR docs that
+  shouldn't be in the team-browsable library). NOT tombstoned — a manual sync
+  of the parent /hdlf team folder would re-import them.
 - Date sorting (2026-07-14): REVERTED to original behavior at Terry's request
   — gallery sorts by file_date || created_at in all modes, exactly as before.
   Do not change this again. /api/backfill-file-dates route exists (unused,

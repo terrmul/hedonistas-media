@@ -240,6 +240,11 @@ export default function Home() {
     setDeletingDupes(true)
     try {
       const ids = Array.from(dupesToDelete)
+      // Tombstone first so the Dropbox autosync doesn't re-import these files
+      const toDelete = assets.filter(a => dupesToDelete.has(a.id) && a.dropbox_path)
+      if (toDelete.length > 0) {
+        await supabase.from('deleted_assets').upsert(toDelete.map(a => ({ dropbox_path: a.dropbox_path, name: a.name })))
+      }
       await supabase.from('assets').delete().in('id', ids)
       setDuplicateGroups(prev => prev
         .map(g => g.filter(a => !dupesToDelete.has(a.id)))
@@ -258,17 +263,21 @@ export default function Home() {
     setFixThumbsResult(null)
     let totalFixed = 0
     let totalFailed = 0
+    const failedIds: string[] = []
     try {
       while (true) {
         const res = await fetch('/api/fix-thumbnails', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ limit: 30 })
+          // Skip assets that already failed this run so one bad batch
+          // doesn't block the rest of the backlog
+          body: JSON.stringify({ limit: 30, excludeIds: failedIds })
         })
         const data = await res.json()
         if (data.error) break
         totalFixed += data.processed || 0
         totalFailed += data.failed || 0
+        if (Array.isArray(data.failedIds)) failedIds.push(...data.failedIds)
         setFixThumbsResult({ fixed: totalFixed, failed: totalFailed })
         setMissingThumbCount(data.remaining || 0)
         await fetchAssets()
