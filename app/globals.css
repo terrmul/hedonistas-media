@@ -56,3 +56,9 @@ body {
 .border-r.border-neutral-800 {
   background-color: #201d1b !important;
 }
+
+/* High contrast text overrides */
+.text-neutral-400 { color: #c4b49c !important; }
+.text-neutral-500 { color: #a08870 !important; }
+.text-neutral-600 { color: #7a6a58 !important; }
+.text-neutral-300 { color: #e0d0bc !important; }
