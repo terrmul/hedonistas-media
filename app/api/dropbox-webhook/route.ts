@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     const syncPath = process.env.DROPBOX_SYNC_PATH || ''
-    const limit = parseInt(process.env.WEBHOOK_SYNC_LIMIT || '50', 10)
+    const limit = parseInt(process.env.WEBHOOK_SYNC_LIMIT || '500', 10)
     if (!syncPath) return NextResponse.json({ ok: true, skipped: 'no sync path' })
 
     const origin = req.headers.get('x-forwarded-host')
