@@ -665,7 +665,7 @@ export default function Home() {
           <div className="flex items-center gap-3 mb-2">
             <img src="/icon.png" alt="Hedonistas Mezcal" className="w-10 h-10 rounded-xl object-contain" />
             <div>
-              <h1 className="text-base font-bold tracking-tight">HEDONISTAS MEZCAL</h1>
+              <h1 style={{fontFamily: "Pacifico, serif"}} className="text-base tracking-tight">Hedonistas Mezcal</h1>
               <p className="text-neutral-500 text-xs">Media library</p>
             </div>
           </div>
