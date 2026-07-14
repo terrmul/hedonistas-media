@@ -98,6 +98,8 @@ export async function POST(req: NextRequest) {
 
     const { data: existing } = await supabase.from('assets').select('dropbox_path')
     const existingPaths = new Set((existing || []).map((a: any) => a.dropbox_path))
+    const { data: deleted } = await supabase.from('deleted_assets').select('dropbox_path').limit(25000)
+    const deletedPaths = new Set((deleted || []).map((a: any) => a.dropbox_path))
 
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
@@ -110,7 +112,7 @@ export async function POST(req: NextRequest) {
           if (specificFiles.length > 0) {
             const filesToProcess = specificFiles
               .map((p: string) => ({ path_lower: p, name: p.split('/').pop() || p }))
-              .filter((f: any) => !existingPaths.has(f.path_lower) && getFileType(f.name) !== null)
+              .filter((f: any) => !existingPaths.has(f.path_lower) && !deletedPaths.has(f.path_lower) && getFileType(f.name) !== null)
 
             send({ type: 'start', total: filesToProcess.length, grandTotal: filesToProcess.length })
             let processed = 0, failed = 0, skipped = specificFiles.length - filesToProcess.length
@@ -173,7 +175,7 @@ export async function POST(req: NextRequest) {
             hasMore = response.result.has_more
             newCursor = response.result.cursor
             // Keep paginating until we find media files or run out of pages
-            while (hasMore && files.filter((f: any) => !existingPaths.has(f.path_lower) && getFileType(f.name) !== null).length === 0) {
+            while (hasMore && files.filter((f: any) => !existingPaths.has(f.path_lower) && !deletedPaths.has(f.path_lower) && getFileType(f.name) !== null).length === 0) {
               const next = await dbx.filesListFolderContinue({ cursor: newCursor })
               files.push(...next.result.entries.filter((e: any) => e['.tag'] === 'file'))
               hasMore = next.result.has_more
@@ -182,7 +184,7 @@ export async function POST(req: NextRequest) {
           }
 
           const mediaFiles = files
-            .filter((f: any) => !existingPaths.has(f.path_lower) && getFileType(f.name) !== null)
+            .filter((f: any) => !existingPaths.has(f.path_lower) && !deletedPaths.has(f.path_lower) && getFileType(f.name) !== null)
             .slice(0, limit)
 
           const grandTotal = mediaFiles.length + (hasMore ? 999 : 0)

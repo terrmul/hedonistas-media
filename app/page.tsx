@@ -553,7 +553,11 @@ export default function Home() {
 
   async function deleteSingle(id: string) {
     if (!confirm('Delete this asset?')) return
+    const asset = assets.find(a => a.id === id)
     await supabase.from('assets').delete().eq('id', id)
+    if (asset?.dropbox_path) {
+      await supabase.from('deleted_assets').upsert({ dropbox_path: asset.dropbox_path, name: asset.name })
+    }
     setAssets(prev => prev.filter(a => a.id !== id))
     if (selected?.id === id) setSelected(null)
   }
@@ -562,7 +566,11 @@ export default function Home() {
     if (!confirm(`Delete ${selectedIds.size} asset${selectedIds.size !== 1 ? 's' : ''}?`)) return
     setDeleting(true)
     const ids = Array.from(selectedIds)
+    const toDelete = assets.filter(a => selectedIds.has(a.id) && a.dropbox_path)
     await supabase.from('assets').delete().in('id', ids)
+    if (toDelete.length > 0) {
+      await supabase.from('deleted_assets').upsert(toDelete.map(a => ({ dropbox_path: a.dropbox_path, name: a.name })))
+    }
     setAssets(prev => {
       const next = prev.filter(a => !selectedIds.has(a.id))
       setMissingThumbCount(next.filter(a => !a.thumbnail_url).length)
