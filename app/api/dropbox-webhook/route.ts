@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     await fetch(`${origin}/api/dropbox-sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: syncPath, limit, resetCursor: true }),
+      body: JSON.stringify({ path: syncPath, limit, resetCursor: true, tagOnSync: true }),
     })
 
     const afterCount = await supabase.from('assets').select('id', { count: 'exact', head: true })
