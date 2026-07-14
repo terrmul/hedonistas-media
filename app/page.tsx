@@ -174,11 +174,14 @@ export default function Home() {
           return true
         })
       : results
-    // Sort by when the asset was added to the library (created_at), not the
-    // file's own creation date — file_date is only used for date-range filtering
+    // Newest/Oldest first: sort by date added to the library (created_at).
+    // Date-range mode: filter AND list by the file's creation date (file_date).
+    const sortKey = (x: any) => sortBy === 'date_range'
+      ? new Date(x.file_date || x.created_at).getTime()
+      : new Date(x.created_at).getTime()
     const sorted = [...dateFiltered].sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime()
-      const dateB = new Date(b.created_at).getTime()
+      const dateA = sortKey(a)
+      const dateB = sortKey(b)
       return sortBy === 'date_asc' ? dateA - dateB : dateB - dateA
     })
     setFiltered(sorted)
