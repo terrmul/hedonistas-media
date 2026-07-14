@@ -26,6 +26,21 @@
 - (nothing — pick from TODO below)
 
 ## Done (earlier sessions)
+- Brand color scheme (2026-07-14): light crema theme from brand Pantones,
+  implemented entirely as utility-class overrides in app/globals.css (no TSX
+  changes). Cream canvas (9185 #EDE1CF), dark olive text (6216), sidebar in
+  a slightly darker cream (#E5D7C0), orange actions (158 #E87722),
+  raspberry/wine danger (7425/2042), dark gold accents (7551).
+  Pacifico font + logo unchanged. Full Pantone→hex table in this session's
+  notes; contrast all >= 4.5:1.
+- Thumbnails + dupes (2026-07-14): Fixed 140 broken thumbnails. Root causes:
+  (1) fix-thumbnails only queried thumbnail_url='' and missed NULLs;
+  (2) non-ASCII filenames (e.g. "matatlán") broke BOTH the raw Dropbox-API-Arg
+  header (fixed via httpHeaderSafeJson in lib/dropbox.ts) AND Supabase storage
+  keys (fixed by sanitizing thumbName in fix-thumbnails + dropbox-sync).
+  Failed batches no longer block the queue (excludeIds). GET /api/fix-thumbnails
+  = diagnostic report with live Dropbox test. Duplicate-finder delete now writes
+  deleted_assets tombstones so autosync doesn't re-import cleared dupes.
 - Reconcile route (2026-07-14): /api/reconcile-dropbox removes DB assets whose
   files no longer exist in Dropbox (pre-webhook drift). Dry run by default;
   ?confirm=true deletes rows + thumbnails. Scoped to DROPBOX_SYNC_PATH only.

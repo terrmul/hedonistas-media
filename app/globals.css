@@ -7,8 +7,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #ede1cf;
+  --foreground: #333734;
 }
 
 @theme inline {
@@ -22,50 +22,96 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ── Hedonistas warm palette ── ADA WCAG AA compliant ─────────────────────
-   All text colors verified >= 4.5:1 contrast on their respective backgrounds
-   Background scale: #1a1614 (darkest) → #3d3730 (card) → #524a42 (border)
-   ───────────────────────────────────────────────────────────────────────── */
+/* ── Hedonistas light crema palette ── from brand Pantones ─────────────────
+   Canvas: 9185 cream. Text: 6216 dark olive ramp. Sidebar: 7734 forest green
+   with cream text (scoped overrides below). Actions: 158 orange.
+   Danger: 7425 raspberry / 2042 wine. Gold: 7551. Success: 7734.
+   All text >= 4.5:1 on its background.
+   ─────────────────────────────────────────────────────────────────────── */
 
-/* Backgrounds */
-.bg-neutral-950 { background-color: #1a1614 !important; }
-.bg-neutral-900 { background-color: #2a2522 !important; }
-.bg-neutral-800 { background-color: #3d3730 !important; }
-.bg-neutral-700 { background-color: #524a42 !important; }
+/* Backgrounds — cream scale (darker = more recessed) */
+.bg-neutral-950 { background-color: #ede1cf !important; }
+.bg-neutral-900 { background-color: #f6efe3 !important; }
+.bg-neutral-800, .hover\:bg-neutral-800:hover { background-color: #e2d2b6 !important; }
+.bg-neutral-700, .hover\:bg-neutral-700:hover { background-color: #d5c19e !important; }
 
 /* Borders */
-.border-neutral-900 { border-color: #2a2522 !important; }
-.border-neutral-800 { border-color: #3d3730 !important; }
-.border-neutral-700 { border-color: #524a42 !important; }
-.border-neutral-600 { border-color: #6a5e54 !important; }
+.border-neutral-900 { border-color: #e6d8c1 !important; }
+.border-neutral-800 { border-color: #d9c8a9 !important; }
+.border-neutral-700 { border-color: #c6b28d !important; }
+.border-neutral-600, .hover\:border-neutral-600:hover { border-color: #a78f66 !important; }
+.border-neutral-500, .hover\:border-neutral-500:hover, .focus\:border-neutral-500:focus { border-color: #6fa287 !important; }
+.border-neutral-800\/50 { border-color: rgba(217,200,169,0.5) !important; }
+.divide-neutral-800 > :not([hidden]) ~ :not([hidden]) { border-color: #d9c8a9 !important; }
 
-/* Primary text — warm cream, 15:1 contrast */
-.text-white { color: #f5ead8 !important; }
+/* Primary text — black */
+.text-white, .hover\:text-white:hover { color: #000000 !important; }
+.text-black { color: #000000 !important; }
 
-/* Secondary text — warm light, 8.6:1 contrast ✓ */
-.text-neutral-300 { color: #c8b090 !important; }
+/* Logo icon rendered black */
+img[src="/icon.png"] { filter: brightness(0) !important; }
 
-/* Muted text — warm tan, 5.3:1 contrast ✓ */
-.text-neutral-400 { color: #a08868 !important; }
+/* Drag-and-drop upload box — white background */
+.border-dashed { background-color: #ffffff !important; }
 
-/* Subtle text — warm gray, 4.6:1 contrast ✓ (was failing before) */
-.text-neutral-500 { color: #908070 !important; }
-
-/* Minimal text — warm gray, 4.5:1 contrast ✓ (was badly failing before) */
-.text-neutral-600 { color: #908070 !important; }
+/* Secondary text — olive-green ramp */
+.text-neutral-300, .hover\:text-neutral-300:hover { color: #474c49 !important; }
+.text-neutral-400, .hover\:text-neutral-400:hover { color: #515e55 !important; }
+.text-neutral-500 { color: #5b675d !important; }
+.text-neutral-600 { color: #5b675d !important; }
+.text-neutral-700 { color: #6e7a71 !important; }
 
 /* Placeholder */
-.placeholder-neutral-600::placeholder { color: #6a5e54 !important; }
+.placeholder-neutral-600::placeholder { color: #877f6b !important; }
 
-/* Black overlays */
-.bg-black { background-color: #0f0d0b !important; }
-.bg-black\/85 { background-color: rgba(15,13,11,0.85) !important; }
-.bg-black\/80 { background-color: rgba(15,13,11,0.80) !important; }
-.bg-black\/70 { background-color: rgba(15,13,11,0.70) !important; }
-.bg-black\/60 { background-color: rgba(15,13,11,0.60) !important; }
-.bg-black\/30 { background-color: rgba(15,13,11,0.30) !important; }
-.bg-black\/20 { background-color: rgba(15,13,11,0.20) !important; }
-.bg-black\/10 { background-color: rgba(15,13,11,0.10) !important; }
+/* Primary actions — orange (PANTONE 158), dark text set inline via text-black */
+.bg-amber-600 { background-color: #e87722 !important; }
+.hover\:bg-amber-500:hover { background-color: #d0640f !important; }
+.bg-amber-500 { background-color: #d0640f !important; }
+.border-amber-600, .hover\:border-amber-600:hover { border-color: #e87722 !important; }
+.border-amber-600\/30 { border-color: rgba(232,119,34,0.4) !important; }
+.accent-amber-600 { accent-color: #be5400 !important; }
+.ring-amber-600 { --tw-ring-color: #e87722 !important; }
+.ring-amber-900 { --tw-ring-color: #8a5a10 !important; }
 
-/* Left sidebar slightly lighter than main */
-.sticky.top-0.overflow-y-auto { background-color: #221f1c !important; }
+/* Gold accents — dark gold for readability on cream (PANTONE 7551 deepened) */
+.text-amber-400, .hover\:text-amber-400:hover { color: #8a5a10 !important; }
+.text-amber-500, .hover\:text-amber-500:hover { color: #8a5a10 !important; }
+.text-amber-600 { color: #7d5800 !important; }
+.border-amber-800 { border-color: #c9a44a !important; }
+.bg-amber-950\/30 { background-color: rgba(225,183,76,0.18) !important; }
+.bg-amber-950\/40 { background-color: rgba(225,183,76,0.25) !important; }
+.bg-amber-950, .hover\:bg-amber-950:hover { background-color: rgba(225,183,76,0.3) !important; }
+
+/* Danger — raspberry/wine (PANTONE 7425 / 2042) */
+.bg-red-600 { background-color: #b52555 !important; color: #ffffff !important; }
+.hover\:bg-red-500:hover { background-color: #9e1f4b !important; }
+.text-red-400, .hover\:text-red-400:hover { color: #b52555 !important; }
+.text-red-500 { color: #9e1f4b !important; }
+.border-red-900 { border-color: #d5a4b5 !important; }
+.border-red-800 { border-color: #c07f96 !important; }
+.border-red-700 { border-color: #b52555 !important; }
+.bg-red-950\/50 { background-color: rgba(181,37,85,0.10) !important; }
+.bg-red-950\/60 { background-color: rgba(181,37,85,0.14) !important; }
+.bg-red-950, .hover\:bg-red-950:hover { background-color: rgba(181,37,85,0.12) !important; }
+.bg-red-900 { background-color: #70273d !important; color: #ffffff !important; }
+.bg-red-800 { background-color: #8b2c4b !important; color: #ffffff !important; }
+.accent-red-600 { accent-color: #b52555 !important; }
+
+/* Success — forest green (PANTONE 7734) */
+.text-green-400 { color: #286140 !important; }
+.text-green-500 { color: #286140 !important; }
+.border-green-900 { border-color: #9abeaa !important; }
+
+/* Overlays — deep green-black scrim (modal backdrops stay dark) */
+.bg-black { background-color: #0d110f !important; }
+.bg-black\/85 { background-color: rgba(13,17,15,0.85) !important; }
+.bg-black\/80 { background-color: rgba(13,17,15,0.80) !important; }
+.bg-black\/70 { background-color: rgba(13,17,15,0.70) !important; }
+.bg-black\/60 { background-color: rgba(13,17,15,0.60) !important; }
+.bg-black\/30 { background-color: rgba(13,17,15,0.30) !important; }
+.bg-black\/20 { background-color: rgba(13,17,15,0.20) !important; }
+.bg-black\/10 { background-color: rgba(13,17,15,0.10) !important; }
+
+/* ── Sidebar: same cream family as the canvas, one shade darker ────────── */
+.sticky.top-0.overflow-y-auto { background-color: #e5d7c0 !important; }
