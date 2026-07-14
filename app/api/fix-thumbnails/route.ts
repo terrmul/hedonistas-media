@@ -89,6 +89,25 @@ async function countMissingThumbs(): Promise<number> {
   return (c1 || 0) + (c2 || 0)
 }
 
+// Diagnostic: GET /api/fix-thumbnails shows what's still missing, by extension
+export async function GET() {
+  try {
+    const assets = await getMissingThumbAssets([], 500)
+    const byExt: Record<string, number> = {}
+    for (const a of assets) {
+      const ext = (a.name || '').toLowerCase().slice((a.name || '').lastIndexOf('.')) || '(none)'
+      byExt[ext] = (byExt[ext] || 0) + 1
+    }
+    return NextResponse.json({
+      missingThumbnails: assets.length,
+      byExtension: Object.fromEntries(Object.entries(byExt).sort((a, b) => b[1] - a[1])),
+      sample: assets.slice(0, 20).map((a: any) => ({ name: a.name, type: a.type, path: a.dropbox_path })),
+    })
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { limit = 30, excludeIds = [] } = await req.json().catch(() => ({}))
