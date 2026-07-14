@@ -23,21 +23,27 @@
 - Hedonistas branding (Pacifico font, icon.png)
 
 ## In Progress
-- Dropbox OAuth (permanent token) - PARTIALLY DONE
-  - App key and secret added to .env.local
-  - Redirect URIs added to Dropbox app
-  - Auth routes created: /api/dropbox-auth and /api/dropbox-auth/callback
-  - lib/dropbox.ts helper created
-  - Need to: visit localhost:3000/api/dropbox-auth to get refresh token
-  - Then update all routes to use getDropboxToken() from lib/dropbox.ts
-  - Currently getting 401 error on browse - old token expired
+- (nothing — pick from TODO below)
+
+## Done (earlier sessions)
+- Dropbox OAuth (permanent token) - DONE, verified 2026-07-14
+  - Refresh token in .env.local works (token grant returns 200)
+  - All Dropbox routes use getDropboxToken() from lib/dropbox.ts
+  - File scopes (files.metadata.read / content.read / content.write) enabled
+  - Note: account_info.read scope not enabled — not needed by the app
+  - Diagnostic script: node test-dropbox-auth.js
 
 
 ## TODO (updated)
 
 ### High priority
 - **Admin-only sync** — only terry@hedonistasmezcal.com sees the Choose Folder / sync button; all other logged-in users only see drag and drop
-- **Autosync on Dropbox changes** — webhook already built, needs to handle both additions AND deletions so database always mirrors HDLF Team folder
+- **Autosync on Dropbox changes** — CODE DONE 2026-07-14: sync route now processes
+  Dropbox deletions (removes assets + thumbnails, folder deletes included);
+  webhook uses cursor deltas (resetCursor: false) and reports adds + removals;
+  UI banner shows both. REMAINING (manual): set DROPBOX_SYNC_PATH env var in
+  Vercel, deploy, register https://<production-domain>/api/dropbox-webhook in
+  Dropbox App Console → Settings → Webhooks
 - **MP4 thumbnails** — video files not pulling thumbnails during sync, needs fix
 - **Drag & drop uploads go to Dropbox** — when a user drops a file, upload it to a specific Dropbox folder (e.g. /HDLF Team/Imported Files) instead of just Supabase storage
 

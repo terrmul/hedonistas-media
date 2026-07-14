@@ -31,35 +31,52 @@ export async function POST(req: NextRequest) {
       : req.nextUrl.origin
 
     const supabase = getServiceSupabase()
-    const beforeCount = await supabase.from('assets').select('id', { count: 'exact', head: true })
-    const before = beforeCount.count || 0
 
+    // resetCursor: false — continue from the saved cursor so we get a delta
+    // (additions AND deletions) instead of rescanning the whole folder.
+    // First run (no saved cursor) falls back to a full scan automatically.
     const syncRes = await fetch(`${origin}/api/dropbox-sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: syncPath, limit, resetCursor: true, tagOnSync: true }),
+      body: JSON.stringify({ path: syncPath, limit, resetCursor: false, tagOnSync: true }),
     })
-    // Must consume the SSE stream or the sync route exits immediately
+
+    // Consume the SSE stream (sync exits early otherwise) and capture the final result
+    let added = 0
+    let removed = 0
     if (syncRes.body) {
       const reader = syncRes.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
       while (true) {
-        const { done } = await reader.read()
+        const { done, value } = await reader.read()
         if (done) break
+        buf += decoder.decode(value, { stream: true })
+        let idx
+        while ((idx = buf.indexOf('\n\n')) !== -1) {
+          const chunk = buf.slice(0, idx)
+          buf = buf.slice(idx + 2)
+          const line = chunk.split('\n').find(l => l.startsWith('data: '))
+          if (!line) continue
+          try {
+            const evt = JSON.parse(line.slice(6))
+            if (evt.type === 'complete') {
+              added = evt.processed || 0
+              removed = evt.removed || 0
+            }
+          } catch {}
+        }
       }
     }
 
-    const afterCount = await supabase.from('assets').select('id', { count: 'exact', head: true })
-    const after = afterCount.count || 0
-    const newFiles = Math.max(0, after - before)
-
-    if (newFiles > 0) {
+    if (added > 0 || removed > 0) {
       await supabase.from('sync_state').upsert({
         key: 'webhook_notification',
-        value: JSON.stringify({ count: newFiles, timestamp: new Date().toISOString(), dismissed: false })
+        value: JSON.stringify({ count: added, removed, timestamp: new Date().toISOString(), dismissed: false })
       })
     }
 
-    return NextResponse.json({ ok: true, newFiles })
+    return NextResponse.json({ ok: true, added, removed })
   } catch (err) {
     console.error('Webhook error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })

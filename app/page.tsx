@@ -52,7 +52,7 @@ export default function Home() {
   const [selectMode, setSelectMode] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<any>(null)
-  const [webhookNotification, setWebhookNotification] = useState<{ count: number; timestamp: string } | null>(null)
+  const [webhookNotification, setWebhookNotification] = useState<{ count: number; removed?: number; timestamp: string } | null>(null)
   const [syncProgress, setSyncProgress] = useState({ processed: 0, total: 0, current: '' })
   const [syncPath, setSyncPath] = useState('')
   const [tagOnSync, setTagOnSync] = useState(true)
@@ -873,7 +873,10 @@ export default function Home() {
             <div className="mb-4 p-4 rounded-xl bg-amber-950/40 border border-amber-800 flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-amber-400 font-medium">
-                  {webhookNotification.count} new file{webhookNotification.count !== 1 ? 's' : ''} were automatically imported from Dropbox
+                  {[
+                    webhookNotification.count > 0 ? `${webhookNotification.count} new file${webhookNotification.count !== 1 ? 's' : ''} imported` : null,
+                    (webhookNotification.removed || 0) > 0 ? `${webhookNotification.removed} removed (deleted in Dropbox)` : null,
+                  ].filter(Boolean).join(' · ')} — automatic Dropbox sync
                 </p>
                 <p className="text-xs text-amber-600 mt-0.5">
                   {new Date(webhookNotification.timestamp).toLocaleString()}

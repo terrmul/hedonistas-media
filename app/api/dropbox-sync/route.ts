@@ -159,6 +159,7 @@ export async function POST(req: NextRequest) {
 
           let cursor = resetCursor ? null : await getSavedCursor(path, supabase)
           let files: any[] = []
+          let deletedEntries: any[] = []
           let hasMore = false
           let newCursor = ''
 
@@ -166,6 +167,7 @@ export async function POST(req: NextRequest) {
             send({ type: 'status', message: 'Resuming from saved position...' })
             const response = await dbx.filesListFolderContinue({ cursor })
             files = response.result.entries.filter((e: any) => e['.tag'] === 'file')
+            deletedEntries = response.result.entries.filter((e: any) => e['.tag'] === 'deleted')
             hasMore = response.result.has_more
             newCursor = response.result.cursor
           } else {
@@ -181,6 +183,33 @@ export async function POST(req: NextRequest) {
               hasMore = next.result.has_more
               newCursor = next.result.cursor
             }
+          }
+
+          // Handle files/folders deleted in Dropbox (deltas only arrive via a saved cursor).
+          // A deleted folder arrives as one entry, so also match everything under it.
+          let removed = 0
+          if (deletedEntries.length > 0) {
+            send({ type: 'status', message: `Processing ${deletedEntries.length} deletion(s) from Dropbox...` })
+            for (const entry of deletedEntries) {
+              const p = entry.path_lower
+              if (!p) continue
+              const { data: exact } = await supabase.from('assets').select('id, thumbnail_url').eq('dropbox_path', p)
+              const { data: nested } = await supabase.from('assets').select('id, thumbnail_url').like('dropbox_path', `${p}/%`)
+              const toRemove = [...(exact || []), ...(nested || [])]
+              if (toRemove.length === 0) continue
+
+              // Clean up thumbnails in Supabase storage
+              const thumbNames = toRemove
+                .map((a: any) => a.thumbnail_url?.split('/thumbnails/')[1])
+                .filter(Boolean)
+              if (thumbNames.length > 0) {
+                await supabase.storage.from('thumbnails').remove(thumbNames)
+              }
+
+              const { error: delErr } = await supabase.from('assets').delete().in('id', toRemove.map((a: any) => a.id))
+              if (!delErr) removed += toRemove.length
+            }
+            send({ type: 'status', message: `Removed ${removed} asset(s) deleted in Dropbox` })
           }
 
           const mediaFiles = files
@@ -226,7 +255,7 @@ export async function POST(req: NextRequest) {
             await clearCursor(supabase)
           }
 
-          send({ type: 'complete', processed, failed, skipped, total: mediaFiles.length, grandTotal, hasMore })
+          send({ type: 'complete', processed, failed, skipped, removed, total: mediaFiles.length, grandTotal, hasMore })
           controller.close()
         } catch (err) {
           console.error('Sync stream error:', err)
