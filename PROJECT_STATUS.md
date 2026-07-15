@@ -1,9 +1,21 @@
 # Hedonistas Media Library - Project Status
 
 ## Live URLs
-- Vercel: https://hedonistas-media-nf7fa5jy6-hedonistasmedia.vercel.app
+- Custom domain (primary, added 2026-07-14): https://media.hedonistasmezcal.com
+  (CNAME at Directnic → Vercel; Supabase Site URL + redirect URLs updated;
+  Dropbox webhook registered on both domains, both Enabled)
+- Vercel: https://hedonistas-media.vercel.app
 - GitHub: https://github.com/terrmul/hedonistas-media
 - Supabase: https://avrsbwvvrqvcpzzgwzov.supabase.co
+- Supabase upgraded to Pro ($25/mo) 2026-07-14 — was exceeding free limits
+  (8.4GB/5GB egress, 0.97GB/1GB storage). First invoice ~$34.81 due to overage.
+  Egress optimization done 2026-07-14: thumbnail uploads now set cacheControl
+  31536000 (1yr, immutable filenames) in dropbox-sync + fix-thumbnails; gallery
+  grid images got loading="lazy" decoding="async" so a page load no longer pulls
+  all ~4800 thumbnails at once. Existing thumbnails keep old 1hr cache until
+  re-uploaded — fine, lazy loading is the bigger lever.
+  Billing: Supabase has NO custom $ alert; quota-warning emails go to
+  mumble_asks.1l@icloud.com (offered to add terry@ as additional recipient).
 
 ## Local Setup
 - Project: ~/Documents/hedonistas-media

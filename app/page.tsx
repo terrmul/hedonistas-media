@@ -985,7 +985,7 @@ export default function Home() {
                 <div className="aspect-[4/3] bg-neutral-900 flex items-center justify-center relative">
                   {displayUrl
                     ? <div className="relative w-full h-full">
-                        <img src={displayUrl} alt={asset.name} className="w-full h-full object-cover" />
+                        <img src={displayUrl} alt={asset.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                         {asset.type === 'video' && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/10 hover:bg-black/25 transition-colors pointer-events-none">
                             <div className="w-10 h-10 rounded-full bg-black/60 flex items-center justify-center">
@@ -1249,7 +1249,7 @@ export default function Home() {
                           className={`relative rounded-lg overflow-hidden border-2 transition-colors text-left ${marked ? 'border-red-700' : 'border-neutral-800 hover:border-neutral-600'}`}>
                           <div className="aspect-square bg-neutral-800 flex items-center justify-center">
                             {asset.thumbnail_url ? (
-                              <img src={asset.thumbnail_url} alt={asset.name} className="w-full h-full object-cover" />
+                              <img src={asset.thumbnail_url} alt={asset.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                             ) : (
                               <span className="text-neutral-600 text-xs">No preview</span>
                             )}

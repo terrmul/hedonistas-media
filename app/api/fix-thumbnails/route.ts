@@ -52,7 +52,9 @@ async function uploadThumbnail(thumbnail: Buffer, fileName: string): Promise<str
   const thumbName = `${Date.now()}_${Math.random().toString(36).slice(2)}_${safeName}.jpg`
   const { data: uploadData, error: uploadError } = await supabase.storage
     .from('thumbnails')
-    .upload(thumbName, thumbnail, { contentType: 'image/jpeg' })
+    // cacheControl: filenames are unique+immutable, so browsers/CDN can cache
+    // for a year — repeat gallery views won't re-download (cuts egress)
+    .upload(thumbName, thumbnail, { contentType: 'image/jpeg', cacheControl: '31536000' })
   if (uploadError) console.error('Thumbnail storage upload failed:', thumbName, uploadError.message)
   if (uploadData) {
     const { data: urlData } = supabase.storage.from('thumbnails').getPublicUrl(thumbName)

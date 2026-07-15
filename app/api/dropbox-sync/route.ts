@@ -40,7 +40,8 @@ async function uploadThumbnail(thumbnail: Buffer, fileName: string, supabase: an
   const thumbName = `${Date.now()}_${Math.random().toString(36).slice(2)}_${safeName}.jpg`
   const { data: uploadData } = await supabase.storage
     .from('thumbnails')
-    .upload(thumbName, thumbnail, { contentType: 'image/jpeg' })
+    // cacheControl: unique+immutable filenames → cache a year, cuts repeat egress
+    .upload(thumbName, thumbnail, { contentType: 'image/jpeg', cacheControl: '31536000' })
   if (uploadData) {
     const { data: urlData } = supabase.storage.from('thumbnails').getPublicUrl(thumbName)
     return urlData.publicUrl
